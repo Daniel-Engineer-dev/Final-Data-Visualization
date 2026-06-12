@@ -1,0 +1,72 @@
+% Trang bia giu phong cach cua mau mon hoc truoc: khung vien doi, logo va tong navy.
+\begin{titlepage}
+\AddToShipoutPictureBG*{%
+    \AtPageLowerLeft{%
+        \put(\LenToUnit{1.2cm},\LenToUnit{1.2cm}){%
+            \color{navyblue}\linethickness{2.5pt}%
+            \framebox(
+                \LenToUnit{\dimexpr\paperwidth-2.4cm\relax},
+                \LenToUnit{\dimexpr\paperheight-2.4cm\relax}
+            ){}%
+        }%
+        \put(\LenToUnit{1.45cm},\LenToUnit{1.45cm}){%
+            \color{navyblue}\linethickness{0.8pt}%
+            \framebox(
+                \LenToUnit{\dimexpr\paperwidth-2.9cm\relax},
+                \LenToUnit{\dimexpr\paperheight-2.9cm\relax}
+            ){}%
+        }%
+    }%
+}
+
+\begin{center}
+\vspace*{0.35cm}
+
+{\fontsize{13}{15}\selectfont\bfseries\color{navyblue}
+\MakeUppercase{\UniversityName}}\\[0.2cm]
+{\fontsize{13}{15}\selectfont\bfseries\color{navyblue}
+\MakeUppercase{\SchoolName}}\\[0.15cm]
+{\fontsize{11}{13}\selectfont\bfseries\color{navyblue}
+\MakeUppercase{\FacultyName}}
+
+\vspace{0.45cm}
+\includegraphics[width=4.8cm, keepaspectratio]{images/logo_khtn.png}
+\vspace{0.4cm}
+
+{\color{navyblue}\rule{0.75\textwidth}{1pt}}
+\vspace{0.35cm}
+
+{\fontsize{14}{16}\selectfont\bfseries\color{navyblue}
+BÁO CÁO ĐỒ ÁN CUỐI KỲ}\\[0.25cm]
+{\fontsize{12}{14}\selectfont\bfseries\color{navyblue}
+Môn: \CourseName}
+
+\vspace{0.45cm}
+{\color{navyblue}\rule{0.75\textwidth}{1pt}}
+\vspace{0.65cm}
+
+{\fontsize{18}{22}\selectfont\bfseries\color{navyblue}
+\MakeUppercase{\ProjectTitle}}
+\end{center}
+
+\vspace*{\fill}
+
+\begin{flushleft}
+\hspace{2.1cm}
+\begin{minipage}{0.72\textwidth}
+{\fontsize{12}{16}\selectfont\bfseries\color{navyblue}
+Nhóm thực hiện: \TeamName}\\[0.2cm]
+{\fontsize{12}{16}\selectfont\bfseries\color{navyblue}
+Thành viên: \TeamMembers}\\[0.2cm]
+{\fontsize{12}{16}\selectfont\bfseries\color{navyblue}
+Giảng viên hướng dẫn: \InstructorName}
+\end{minipage}
+\end{flushleft}
+
+\vspace{0.7cm}
+\begin{center}
+{\fontsize{11}{13}\selectfont\itshape\color{navyblue}
+Thành phố Hồ Chí Minh, \ReportDate}
+\end{center}
+\vspace{0.25cm}
+\end{titlepage}

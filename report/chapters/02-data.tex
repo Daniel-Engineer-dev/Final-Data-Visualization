@@ -1,0 +1,39 @@
+\chapter{Dữ liệu}
+
+\section{Nguồn dữ liệu và độ tin cậy}
+\begin{longtable}{p{0.18\textwidth}p{0.26\textwidth}p{0.16\textwidth}p{0.28\textwidth}}
+\toprule
+\textbf{Nguồn} & \textbf{Đơn vị cung cấp/URL} & \textbf{Ngày truy cập} & \textbf{Lý do tin cậy và giấy phép} \\
+\midrule
+\textit{Nguồn 1} & \textit{Đơn vị và liên kết} & \textit{Ngày} & \textit{Mô tả} \\
+\textit{Nguồn 2} & \textit{Đơn vị và liên kết} & \textit{Ngày} & \textit{Mô tả} \\
+\bottomrule
+\end{longtable}
+
+\section{Mô tả bộ dữ liệu}
+Nêu đơn vị quan sát, số dòng, số cột, phạm vi thời gian, phạm vi địa lý và định dạng.
+Xác nhận bộ dữ liệu có tối thiểu 2.000 dòng và 7 biến độc lập.
+
+\section{Data dictionary}
+Trình bày các biến quan trọng tại \cref{app:data-dictionary}; phân biệt biến gốc,
+biến dẫn xuất, biến định lượng và định tính.
+
+\section{Thu thập và tái tạo dữ liệu}
+Mô tả cách tải dữ liệu, tham số, phiên bản, cấu trúc thư mục và lệnh chạy pipeline.
+Nêu cách bảo đảm người khác có thể tái tạo bộ dữ liệu phân tích.
+
+\section{Làm sạch và biến đổi}
+\begin{itemize}
+    \item Chuẩn hóa kiểu dữ liệu, tên biến, đơn vị và địa danh Việt Nam.
+    \item Xử lý giá trị thiếu, ngoại lệ và bản ghi trùng lặp.
+    \item Kết hợp các nguồn và tạo biến dẫn xuất.
+    \item Bảo toàn dữ liệu gốc và lưu dấu vết xử lý.
+\end{itemize}
+
+\section{Đánh giá chất lượng dữ liệu}
+Trình bày tỷ lệ thiếu, trùng lặp, ngoại lệ, kiểm tra miền giá trị và các giới hạn.
+Giải thích tác động của chất lượng dữ liệu lên kết luận.
+
+\section{Đạo đức, quyền riêng tư và hạn chế}
+Nêu giấy phép, quyền riêng tư, thiên lệch dữ liệu và các trường hợp không nên diễn
+giải quá mức.

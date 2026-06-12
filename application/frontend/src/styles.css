@@ -1,0 +1,40 @@
+:root {
+  color: #10233f;
+  background: #edf4fb;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button { font: inherit; }
+
+.app-shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+.sidebar { background: #002b5c; color: white; padding: 32px 24px; }
+.sidebar h1 { font-size: 28px; line-height: 1.15; margin: 8px 0 32px; }
+.sidebar nav { display: grid; gap: 8px; }
+.sidebar nav button {
+  background: transparent; border: 0; border-radius: 10px; color: #cfe6fb;
+  cursor: pointer; padding: 12px; text-align: left;
+}
+.sidebar nav button.active, .sidebar nav button:hover { background: #0b5d9b; color: white; }
+
+main { padding: 32px; }
+header { align-items: center; display: flex; justify-content: space-between; }
+h2 { font-size: 32px; margin: 4px 0 24px; }
+.eyebrow { color: #2e88c7; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.primary { background: #0868ac; border: 0; border-radius: 10px; color: white; cursor: pointer; padding: 12px 18px; }
+.kpi-grid, .panel-grid { display: grid; gap: 16px; }
+.kpi-grid { grid-template-columns: repeat(3, 1fr); margin-bottom: 16px; }
+.kpi-grid article, .panel { background: white; border: 1px solid #d7e7f5; border-radius: 16px; padding: 20px; }
+.kpi-grid span { color: #55708d; display: block; font-size: 13px; margin-bottom: 8px; }
+.kpi-grid strong { color: #003f73; }
+.panel-grid { grid-template-columns: 1.4fr 1fr; }
+.panel { min-height: 360px; }
+.map-placeholder { background: linear-gradient(145deg, #ffffff, #e1f1fc); }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .kpi-grid, .panel-grid { grid-template-columns: 1fr; }
+}
+

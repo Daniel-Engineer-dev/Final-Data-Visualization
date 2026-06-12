@@ -1,0 +1,62 @@
+{
+  "latex-workshop.latex.outDir": "%DIR%",
+  "latex-workshop.latex.auxDir": "%DIR%/build",
+  "latex-workshop.latex.autoClean.run": "onBuilt",
+  "latex-workshop.latex.clean.method": "glob",
+  "latex-workshop.latex.clean.subfolder.enabled": true,
+  "latex-workshop.latex.clean.fileTypes": [
+    "%DOCFILE%.aux",
+    "%DOCFILE%.bbl",
+    "%DOCFILE%.bcf",
+    "%DOCFILE%.bcf-SAVE-ERROR",
+    "%DOCFILE%.blg",
+    "%DOCFILE%.fdb_latexmk",
+    "%DOCFILE%.fls",
+    "%DOCFILE%.lof",
+    "%DOCFILE%.log",
+    "%DOCFILE%.lot",
+    "%DOCFILE%.out",
+    "%DOCFILE%.run.xml",
+    "%DOCFILE%.synctex.gz",
+    "%DOCFILE%.toc",
+    "%DOCFILE%.xdv",
+    "build/"
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "Build XeLaTeX and clean",
+      "tools": [
+        "latexmk-xelatex",
+        "clean-latex-temporaries"
+      ]
+    }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-xelatex",
+      "command": "latexmk",
+      "args": [
+        "-xelatex",
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-auxdir=%DIR%/build",
+        "-outdir=%DIR%",
+        "%DOC%"
+      ],
+      "env": {}
+    },
+    {
+      "name": "clean-latex-temporaries",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$build = [System.IO.Path]::GetFullPath((Join-Path '%DIR%' 'build')); $root = [System.IO.Path]::GetFullPath('%DIR%'); if ($build.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar) -and (Test-Path -LiteralPath $build)) { Remove-Item -LiteralPath $build -Recurse -Force }; Get-ChildItem -LiteralPath $root -Filter '*.synctex.gz' -File -ErrorAction SilentlyContinue | Remove-Item -Force"
+      ],
+      "env": {}
+    }
+  ]
+}

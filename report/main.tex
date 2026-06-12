@@ -1,0 +1,153 @@
+% !TeX program = xelatex
+\documentclass[12pt,a4paper,oneside]{report}
+
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage[vietnamese]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+
+\addbibresource{references.bib}
+\graphicspath{{images/}}
+\definecolor{chapterblue}{RGB}{0,43,92}
+\definecolor{sectionblue}{RGB}{0,91,161}
+\definecolor{subsectionblue}{RGB}{35,126,190}
+\definecolor{subsubsectionblue}{RGB}{74,151,205}
+\definecolor{accentblue}{RGB}{0,112,192}
+\definecolor{lightblue}{RGB}{232,243,252}
+\definecolor{codeblue}{RGB}{243,248,252}
+\colorlet{navyblue}{chapterblue}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=sectionblue,
+    citecolor=sectionblue,
+    urlcolor=accentblue,
+    pdftitle={Báo cáo đồ án cuối kỳ Trực quan hóa dữ liệu}
+}
+
+\setmainfont{Times New Roman}
+\setstretch{1.25}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0.25em}
+\setlist{nosep}
+\setlist[itemize]{label=\textcolor{subsectionblue}{\textbullet}}
+
+\titleformat{\chapter}[display]
+  {\bfseries\color{chapterblue}\centering}
+  {\Large CHƯƠNG \thechapter}
+  {0.4em}
+  {\LARGE}
+\titleformat{\section}
+  {\Large\bfseries\color{sectionblue}}
+  {\thesection}
+  {0.7em}
+  {}
+\titleformat{\subsection}
+  {\large\bfseries\color{subsectionblue}}
+  {\thesubsection}
+  {0.7em}
+  {}
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{subsubsectionblue}}
+  {\thesubsubsection}
+  {0.7em}
+  {}
+\titlespacing*{\section}{0pt}{2.2ex plus 0.5ex}{0.8ex}
+\titlespacing*{\subsection}{0pt}{1.8ex plus 0.4ex}{0.6ex}
+\titlespacing*{\subsubsection}{0pt}{1.4ex plus 0.3ex}{0.5ex}
+
+\captionsetup{
+    labelfont={bf,color=sectionblue},
+    textfont={color=chapterblue}
+}
+\arrayrulecolor{sectionblue}
+
+\pagestyle{fancy}
+\setlength{\headheight}{26pt}
+\fancyhf{}
+\fancyhead[L]{\color{sectionblue}Đồ án Trực quan hóa dữ liệu}
+\fancyhead[R]{\color{subsectionblue}\ProjectShortTitle}
+\fancyfoot[C]{\color{chapterblue}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{sectionblue}\leaders\hrule height \headrulewidth\hfill}}
+
+\lstset{
+    backgroundcolor=\color{codeblue},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{subsectionblue},
+    numbers=left,
+    numberstyle=\tiny\color{subsectionblue},
+    keywordstyle=\bfseries\color{sectionblue},
+    commentstyle=\itshape\color{subsectionblue},
+    stringstyle=\color{chapterblue},
+    showstringspaces=false,
+    tabsize=2
+}
+
+% ==================== THONG TIN CAN CAP NHAT ====================
+\newcommand{\UniversityName}{Đại học Quốc gia Thành phố Hồ Chí Minh}
+\newcommand{\SchoolName}{Trường Đại học Khoa học Tự nhiên}
+\newcommand{\FacultyName}{Khoa Công nghệ Thông tin}
+\newcommand{\CourseName}{Trực quan hóa dữ liệu}
+\newcommand{\ProjectTitle}{[Tên đề tài phân tích dữ liệu liên quan đến Việt Nam]}
+\newcommand{\ProjectShortTitle}{[Tên đề tài ngắn]}
+\newcommand{\TeamName}{[Tên hoặc số thứ tự nhóm]}
+\newcommand{\TeamMembers}{[Họ tên -- MSSV; Họ tên -- MSSV]}
+\newcommand{\InstructorName}{[Tên giảng viên]}
+\newcommand{\ReportDate}{tháng [MM], năm [YYYY]}
+% ===============================================================
+
+\begin{document}
+
+\pagenumbering{gobble}
+\input{coverpage}
+\input{chapters/00-declaration}
+\input{chapters/00-abstract}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+
+\pagenumbering{arabic}
+\input{chapters/01-introduction}
+\input{chapters/02-data}
+\input{chapters/03-methodology}
+\input{chapters/04-dashboard}
+\input{chapters/05-analysis}
+\input{chapters/06-ai-integration}
+\input{chapters/07-evaluation}
+\input{chapters/08-conclusion}
+
+\printbibliography[heading=bibintoc,title={Tài liệu tham khảo}]
+
+\appendix
+\input{appendices/appendix-a-data-dictionary}
+\input{appendices/appendix-b-ai-logs}
+\input{appendices/appendix-c-contributions}
+
+\end{document}

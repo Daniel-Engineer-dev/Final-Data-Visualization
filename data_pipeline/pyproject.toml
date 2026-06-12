@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vietnam-climate-pipeline"
+version = "0.1.0"
+description = "Reproducible data pipeline for Vietnam Climate Pulse"
+requires-python = ">=3.11"
+dependencies = [
+  "httpx>=0.28,<1",
+  "pandas>=2.2,<3",
+  "pyarrow>=19,<20",
+  "typer>=0.15,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<9", "ruff>=0.9,<1"]
+
+[project.scripts]
+climate-pipeline = "climate_pipeline.cli:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.setuptools.packages.find]
+where = ["src"]

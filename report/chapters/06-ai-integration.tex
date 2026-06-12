@@ -1,0 +1,58 @@
+\chapter{Tích hợp AI}
+
+\section{Mục tiêu và phạm vi AI}
+Nêu các tác vụ AI hỗ trợ, tác vụ không được phép thực hiện và giá trị AI mang lại so
+với dashboard cố định.
+
+\section{Nguyên tắc không thực thi ngầm}
+Khẳng định AI không tự thay đổi dữ liệu gốc hoặc âm thầm chạy thuật toán. Mọi code
+phải được hiển thị, giải thích, chờ người dùng chỉnh sửa/phê duyệt và chỉ chạy local
+sau khi được chấp nhận.
+
+\section{Luồng người dùng phê duyệt}
+\begin{enumerate}
+    \item Người dùng nhập yêu cầu phân tích.
+    \item API AI nhận yêu cầu và ngữ cảnh cấu trúc dữ liệu.
+    \item AI trả về code cùng giải thích bằng ngôn ngữ tự nhiên.
+    \item Giao diện hiển thị trạng thái ``Chờ phê duyệt'' và cho phép chỉnh sửa.
+    \item Người dùng chấp nhận hoặc từ chối; có thể xác nhận các bước rủi ro.
+    \item API thực thi chỉ chạy code đã duyệt trên môi trường local.
+    \item Kết quả, biểu đồ và logs được trả về giao diện.
+\end{enumerate}
+
+\section{Thiết kế API}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{API} & \textbf{Trách nhiệm} \\
+\midrule
+API AI & Nhận yêu cầu/ngữ cảnh; trả về code và giải thích; không thực thi code. \\
+API thực thi & Nhận code đã chỉnh sửa/phê duyệt; kiểm tra an toàn; chạy local; trả kết quả và logs. \\
+API logs & Lưu yêu cầu, code, quyết định phê duyệt, kết quả phân tích và giải thích. \\
+\bottomrule
+\end{tabularx}
+\caption{Phân tách trách nhiệm giữa các API}
+\end{table}
+
+\section{Hiển thị code và giải thích}
+Chèn ảnh giao diện minh chứng code được hiển thị rõ ràng. Trình bày một ví dụ giải
+thích gắn trực tiếp với đoạn code, gồm mục đích và tác động dự kiến lên dữ liệu.
+
+\section{Kiểm soát an toàn}
+Mô tả allowlist/denylist, parser hoặc validator, giới hạn thời gian/tài nguyên, môi
+trường chỉ đọc, xử lý lỗi và cách bảo vệ dữ liệu gốc.
+
+\section{Lưu trữ và khả năng kiểm toán}
+Mô tả schema logs và cách truy lại toàn bộ phiên phân tích. Đưa log mẫu vào
+\cref{app:ai-logs}.
+
+\section{Đánh giá module AI}
+Chuẩn bị một tập câu hỏi phân tích chuẩn và câu hỏi ngoài dự kiến. Đánh giá độ đúng,
+tính linh hoạt, khả năng giải thích, độ an toàn và hạn chế.
+
+\section{Quá trình sử dụng AI trong dự án}
+Tóm tắt các yêu cầu đã đặt ra cho AI, kết quả nhận được, thay đổi do con người thực
+hiện và nhận xét về chất lượng hỗ trợ. Phân biệt rõ nội dung AI đề xuất với quyết
+định cuối cùng của nhóm.
+
