@@ -1,7 +1,10 @@
 import sqlite3
 import datetime
+import logging
 from pathlib import Path
 from app.core.config import settings
+
+_log = logging.getLogger(__name__)
 
 def init_log_db():
     log_db_path = settings.ai_log_db_path
@@ -49,6 +52,5 @@ def log_ai_session(
         
         conn.commit()
         conn.close()
-        print(f"Logged AI session {session_id} to SQLite.")
     except Exception as e:
-        print(f"Error logging AI session: {e}")
+        _log.warning("Error logging AI session: %s", e)

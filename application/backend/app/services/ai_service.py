@@ -2,13 +2,18 @@ import os
 import re
 import httpx
 import json
+import logging
 from typing import Dict, Any
+
+_log = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         self.model = os.getenv("AI_MODEL", "gpt-4o-mini")
+        # Base URL for any OpenAI-compatible provider (OpenAI, Groq, OpenRouter, GitHub Models, Ollama…).
+        self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
     def translate_to_sql(self, question: str) -> Dict[str, str]:
         """
@@ -25,7 +30,7 @@ class AIService:
         return self._generate_mock_sql(question)
 
     def _call_openai(self, question: str) -> Dict[str, str]:
-        url = "https://api.openai.com/v1/chat/completions"
+        url = f"{self.base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.openai_key}"
@@ -49,9 +54,9 @@ class AIService:
                 content = result["choices"][0]["message"]["content"]
                 return json.loads(content)
             else:
-                print(f"OpenAI API error: {response.text}")
+                _log.warning("OpenAI API error: %s", response.text)
         except Exception as e:
-            print(f"Error calling OpenAI API: {e}")
+            _log.warning("Error calling OpenAI API: %s", e)
             
         return self._generate_mock_sql(question)
 
@@ -82,9 +87,9 @@ class AIService:
                 text = result["candidates"][0]["content"]["parts"][0]["text"]
                 return json.loads(text)
             else:
-                print(f"Gemini API error: {response.text}")
+                _log.warning("Gemini API error: %s", response.text)
         except Exception as e:
-            print(f"Error calling Gemini API: {e}")
+            _log.warning("Error calling Gemini API: %s", e)
             
         return self._generate_mock_sql(question)
 
@@ -106,6 +111,15 @@ Dữ liệu của bảng này bao gồm các cột sau:
 - `wind_speed_10m_max`: kiểu DOUBLE (tốc độ gió tối đa ngày km/h)
 - `shortwave_radiation_sum`: kiểu DOUBLE (bức xạ mặt trời ngắn tích lũy ngày MJ/m²)
 
+QUAN TRỌNG — giá trị cột `location` được lưu bằng TIẾNG ANH KHÔNG DẤU. Có đúng 28 trạm:
+- North (Bắc): 'Dien Bien', 'Ha Giang', 'Ha Noi', 'Hai Phong', 'Lang Son', 'Lao Cai', 'Ninh Binh', 'Quang Ninh', 'Son La'
+- Central (Trung): 'Buon Ma Thuot', 'Da Lat', 'Da Nang', 'Hue', 'Nha Trang', 'Phan Thiet', 'Pleiku', 'Quy Nhon', 'Thanh Hoa', 'Vinh'
+- South (Nam): 'Bien Hoa', 'Ca Mau', 'Can Tho', 'Ho Chi Minh City', 'Phu Quoc', 'Rach Gia', 'Soc Trang', 'Tay Ninh', 'Vung Tau'
+Khi người dùng nhắc tên có dấu hoặc viết tắt, PHẢI ánh xạ về đúng chuỗi không dấu ở trên.
+Ví dụ: "Đà Lạt" -> 'Da Lat'; "Huế" -> 'Hue'; "Đà Nẵng" -> 'Da Nang'; "TP. Hồ Chí Minh"/"Sài Gòn"/"HCM" -> 'Ho Chi Minh City'.
+Cột `region` chỉ nhận đúng 3 giá trị: 'North', 'Central', 'South'.
+Cột `date` kiểu DATE, dữ liệu liên tục từ 2020-01-01 đến 2025-12-31 (6 năm).
+
 Nhiệm vụ của bạn là nhận câu hỏi ngôn ngữ tự nhiên từ người dùng (bằng tiếng Việt hoặc tiếng Anh) và sinh ra một câu lệnh SQL SELECT duy nhất, hợp lệ để chạy trên DuckDB và giải thích ngắn gọn bằng tiếng Việt.
 
 YÊU CẦU BẮT BUỘC:
@@ -116,6 +130,8 @@ YÊU CẦU BẮT BUỘC:
   "explanation": "Giải thích ngắn gọn cách câu lệnh SQL này giải quyết câu hỏi của người dùng ở đây."
 }
 3. Chỉ viết duy nhất một câu lệnh SQL và không kết thúc bằng nhiều dấu chấm phẩy.
+4. Tên địa điểm trong điều kiện WHERE phải khớp CHÍNH XÁC chuỗi không dấu trong danh sách trên (vd `location = 'Da Lat'`); TUYỆT ĐỐI không dùng tên có dấu.
+5. Nếu truy vấn có thể trả về nhiều dòng chi tiết, hãy thêm ORDER BY hợp lý và LIMIT (mặc định 100). Lấy năm bằng `year(date)`, tháng bằng `month(date)`.
 """
 
     def _generate_mock_sql(self, question: str) -> Dict[str, str]:
