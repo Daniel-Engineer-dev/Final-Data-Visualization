@@ -1,9 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
 import "./styles.css";
+import vietnamGeo from "./vietnam-geo.json";
+import { Icon } from "./Icon";
+import {
+  PALETTE,
+  REGION_COLORS,
+  TEMP_GRADIENT,
+  CORR_GRADIENT,
+  SANS_FONT,
+  tooltipStyle,
+  axisLabel,
+  axisLineSoft,
+  splitLineSoft,
+  nameTextStyle,
+  legendStyle,
+  chartTitle,
+} from "./theme";
+
+// Register the Vietnam outline once so the overview map renders on a real map.
+echarts.registerMap("vietnam", vietnamGeo as any);
 
 const API_BASE_URL = "http://localhost:8000";
+
+const REGION_VI: Record<string, string> = {
+  North: "Miền Bắc",
+  Central: "Miền Trung",
+  South: "Miền Nam",
+};
+
+// inline custom-property helper for staggered reveals
+const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
 type StationOverview = {
   location: string;
@@ -31,20 +59,20 @@ function App() {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [stations, setStations] = useState<StationOverview[]>([]);
   const [selectedStation, setSelectedStation] = useState<string>("Ha Noi");
-  
+
   // States for Explorer tab
   const [explorerLocation, setExplorerLocation] = useState<string>("All");
   const [explorerData, setExplorerData] = useState<any>(null);
-  
+
   // States for Extreme Events tab
   const [tempThreshold, setTempThreshold] = useState<number>(38.0);
   const [rainThreshold, setRainThreshold] = useState<number>(100.0);
   const [extremeData, setExtremeData] = useState<any>(null);
   const [extremeLocFilter, setExtremeLocFilter] = useState<string>("All");
-  
+
   // States for Relationship Lab tab
   const [relationshipData, setRelationshipData] = useState<any>(null);
-  
+
   // States for AI Analyst tab
   const [aiQuestion, setAiQuestion] = useState<string>("");
   const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
@@ -53,10 +81,13 @@ function App() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiExecLoading, setAiExecLoading] = useState<boolean>(false);
-  
+
   // General Loading/Error states
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Map chart ref (for resetting zoom/pan reliably)
+  const mapRef = useRef<any>(null);
 
   // Fetch Overview Data on mount
   useEffect(() => {
@@ -119,7 +150,7 @@ function App() {
   const handleAskAI = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuestion.trim()) return;
-    
+
     setAiLoading(true);
     setAiError(null);
     setCurrentProposal(null);
@@ -157,22 +188,22 @@ function App() {
       body: JSON.stringify({ code: proposalSql }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then(e => { throw new Error(e.detail || "Không thể phê duyệt mã SQL") });
+        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Không thể phê duyệt mã SQL"); });
         return res.json();
       })
       .then((approvedProposal) => {
         // 2. Execute approved query
         return fetch(`${API_BASE_URL}/api/ai/proposals/${approvedProposal.id}/execute`, {
-          method: "POST"
+          method: "POST",
         });
       })
       .then((res) => {
-        if (!res.ok) return res.json().then(e => { throw new Error(e.detail || "Thực thi SQL thất bại") });
+        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Thực thi SQL thất bại"); });
         return res.json();
       })
       .then((data) => {
         setAiExecResults(data.results);
-        setCurrentProposal(prev => prev ? { ...prev, status: "executed" } : null);
+        setCurrentProposal((prev) => (prev ? { ...prev, status: "executed" } : null));
         setAiExecLoading(false);
       })
       .catch((err) => {
@@ -184,7 +215,7 @@ function App() {
   const handleRejectProposal = () => {
     if (!currentProposal) return;
     fetch(`${API_BASE_URL}/api/ai/proposals/${currentProposal.id}/reject`, {
-      method: "POST"
+      method: "POST",
     })
       .then(() => {
         setCurrentProposal(null);
@@ -197,59 +228,103 @@ function App() {
     setAiQuestion(qText);
   };
 
-  // ECharts Configurations
-  // 1. Geographic Vietnam Station Map Scatter Plot
+  // ============================================================
+  //  ECharts configurations — Editorial Climate Almanac palette
+  // ============================================================
+
+  // 1. Stations plotted on the real Vietnam map, coloured by region
   const getMapOption = () => {
-    const data = stations.map((s) => ({
-      name: s.location,
-      value: [s.longitude, s.latitude, s.avg_temp, s.annual_precip],
+    const regionSeries = (region: string, label: string) => ({
+      name: label,
+      type: "scatter",
+      coordinateSystem: "geo",
+      data: stations
+        .filter((s) => s.region === region)
+        .map((s) => ({
+          name: s.location,
+          value: [s.longitude, s.latitude, s.avg_temp, s.annual_precip],
+        })),
+      symbolSize: 13,
       itemStyle: {
-        color: s.region === "North" ? "#5470c6" : s.region === "Central" ? "#fac858" : "#ee6666"
-      }
-    }));
+        color: REGION_COLORS[region],
+        borderColor: PALETTE.surface,
+        borderWidth: 2,
+        shadowColor: "rgba(40,50,30,0.30)",
+        shadowBlur: 5,
+      },
+      label: {
+        show: true,
+        formatter: "{b}",
+        position: "right",
+        color: PALETTE.ink,
+        fontFamily: SANS_FONT,
+        fontSize: 10.5,
+        textBorderColor: PALETTE.surface,
+        textBorderWidth: 3,
+      },
+      labelLayout: { hideOverlap: true, moveOverlap: "shiftY" },
+      emphasis: {
+        scale: 1.5,
+        label: { show: true, fontWeight: "bold", fontSize: 12 },
+      },
+    });
+
+    const selected = stations.find((s) => s.location === selectedStation);
 
     return {
       title: {
-        text: "Mạng lưới Trạm khí hậu Việt Nam (Click trạm đo trên bản đồ)",
-        left: "center",
-        textStyle: { color: "#ffffff", fontSize: 13 }
+        ...chartTitle("Mạng lưới 28 trạm khí hậu"),
+        subtext: "Cuộn để phóng to · kéo để di chuyển · click để chọn trạm",
+        subtextStyle: { color: PALETTE.inkFaint, fontFamily: SANS_FONT, fontSize: 11 },
       },
       tooltip: {
+        ...tooltipStyle,
         trigger: "item",
-        formatter: (params: any) => {
-          return `${params.name}<br/>Kinh độ: ${params.value[0]}<br/>Vĩ độ: ${params.value[1]}<br/>Nhiệt độ TB: ${params.value[2]}°C<br/>Lượng mưa năm: ${params.value[3]} mm`;
-        }
+        formatter: (p: any) =>
+          p.value && p.value.length >= 4
+            ? `<strong>${p.name}</strong><br/>Nhiệt độ TB: ${p.value[2]}°C<br/>Lượng mưa năm: ${p.value[3]} mm`
+            : p.name,
       },
-      xAxis: {
-        min: 102,
-        max: 110,
-        show: false
+      legend: {
+        ...legendStyle,
+        data: ["Miền Bắc", "Miền Trung", "Miền Nam"],
+        bottom: 4,
+        left: "center",
       },
-      yAxis: {
-        min: 8,
-        max: 23,
-        show: false
+      geo: {
+        map: "vietnam",
+        roam: true,
+        scaleLimit: { min: 1, max: 8 },
+        top: 58,
+        bottom: 42,
+        label: { show: false },
+        itemStyle: {
+          areaColor: "#E9EFE3",
+          borderColor: "#A9BAA0",
+          borderWidth: 1,
+        },
+        emphasis: { disabled: true },
       },
       series: [
+        regionSeries("North", "Miền Bắc"),
+        regionSeries("Central", "Miền Trung"),
+        regionSeries("South", "Miền Nam"),
         {
-          name: "Trạm đo",
+          // ring marking the currently selected station (links map to detail panel)
+          name: "__selected",
           type: "scatter",
-          coordinateSystem: "cartesian2d",
-          data: data,
-          symbolSize: (val: any) => Math.max(12, val[2] * 0.5),
-          label: {
-            show: true,
-            formatter: "{b}",
-            position: "right",
-            color: "#ffffff",
-            fontSize: 10
+          coordinateSystem: "geo",
+          silent: true,
+          z: 6,
+          symbolSize: 26,
+          itemStyle: {
+            color: "transparent",
+            borderColor: PALETTE.clay,
+            borderWidth: 2.5,
           },
-          emphasis: {
-            scale: true,
-            label: { show: true, fontWeight: "bold" }
-          }
-        }
-      ]
+          data: selected ? [{ value: [selected.longitude, selected.latitude] }] : [],
+        },
+      ],
     };
   };
 
@@ -259,50 +334,70 @@ function App() {
     }
   };
 
-  // 2. Line Chart: Temperature trends by month
+  // Reset map zoom/pan to default by re-applying the current option (notMerge).
+  const resetMapView = () => {
+    mapRef.current?.getEchartsInstance?.().setOption(getMapOption(), { notMerge: true });
+  };
+
+  // 2. Monthly temperature trend
   const getTempTrendOption = () => {
     if (!explorerData || !explorerData.monthly_trends) return {};
-    const months = explorerData.monthly_trends.map((t: any) => `T${t.month_num}`);
+    const months = explorerData.monthly_trends.map((t: any) => `Th${t.month_num}`);
     const avgTemps = explorerData.monthly_trends.map((t: any) => t.avg_temp);
     const maxTemps = explorerData.monthly_trends.map((t: any) => t.avg_max_temp);
     const minTemps = explorerData.monthly_trends.map((t: any) => t.avg_min_temp);
 
     return {
-      tooltip: { trigger: "axis" },
-      legend: { data: ["Nhiệt độ tối đa", "Nhiệt độ trung bình", "Nhiệt độ tối thiểu"], textStyle: { color: "#ffffff" } },
-      xAxis: { type: "category", data: months, axisLabel: { color: "#ffffff" } },
-      yAxis: { type: "value", name: "°C", axisLabel: { color: "#ffffff" }, nameTextStyle: { color: "#ffffff" } },
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      legend: { ...legendStyle, data: ["Tối đa", "Trung bình", "Tối thiểu"], top: 0 },
+      grid: { left: 10, right: 18, top: 44, bottom: 10, containLabel: true },
+      xAxis: { type: "category", data: months, axisLabel, axisLine: axisLineSoft },
+      yAxis: {
+        type: "value",
+        name: "°C",
+        axisLabel,
+        nameTextStyle,
+        splitLine: splitLineSoft,
+      },
       series: [
-        { name: "Nhiệt độ tối đa", type: "line", data: maxTemps, color: "#f44336", smooth: true },
-        { name: "Nhiệt độ trung bình", type: "line", data: avgTemps, color: "#ff9800", smooth: true, lineStyle: { width: 3 } },
-        { name: "Nhiệt độ tối thiểu", type: "line", data: minTemps, color: "#2196f3", smooth: true }
-      ]
+        { name: "Tối đa", type: "line", data: maxTemps, color: PALETTE.clay, smooth: true, symbol: "none", lineStyle: { width: 2 } },
+        { name: "Trung bình", type: "line", data: avgTemps, color: PALETTE.amber, smooth: true, symbol: "circle", symbolSize: 6, lineStyle: { width: 3 }, areaStyle: { color: "rgba(201,138,30,0.10)" } },
+        { name: "Tối thiểu", type: "line", data: minTemps, color: PALETTE.sky, smooth: true, symbol: "none", lineStyle: { width: 2 } },
+      ],
     };
   };
 
-  // 3. Bar Chart: Rainfall by month
+  // 3. Monthly rainfall bars
   const getRainTrendOption = () => {
     if (!explorerData || !explorerData.monthly_trends) return {};
-    const months = explorerData.monthly_trends.map((t: any) => `T${t.month_num}`);
+    const months = explorerData.monthly_trends.map((t: any) => `Th${t.month_num}`);
     const rain = explorerData.monthly_trends.map((t: any) => t.avg_rain);
 
     return {
-      tooltip: { trigger: "axis" },
-      legend: { data: ["Lượng mưa"], textStyle: { color: "#ffffff" } },
-      xAxis: { type: "category", data: months, axisLabel: { color: "#ffffff" } },
-      yAxis: { type: "value", name: "mm", axisLabel: { color: "#ffffff" }, nameTextStyle: { color: "#ffffff" } },
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      grid: { left: 10, right: 18, top: 24, bottom: 10, containLabel: true },
+      xAxis: { type: "category", data: months, axisLabel, axisLine: axisLineSoft },
+      yAxis: { type: "value", name: "mm", axisLabel, nameTextStyle, splitLine: splitLineSoft },
       series: [
-        { name: "Lượng mưa", type: "bar", data: rain, color: "#00bcd4", barWidth: "60%" }
-      ]
+        {
+          name: "Lượng mưa",
+          type: "bar",
+          data: rain,
+          color: PALETTE.sky,
+          barWidth: "56%",
+          itemStyle: { borderRadius: [5, 5, 0, 0] },
+          emphasis: { itemStyle: { color: PALETTE.forest } },
+        },
+      ],
     };
   };
 
-  // 4. Heatmap: Month x Year Average Temperature
+  // 4. Month × Year temperature heatmap
   const getHeatmapOption = () => {
     if (!explorerData || !explorerData.heatmap_matrix) return {};
     const years = Array.from(new Set(explorerData.heatmap_matrix.map((h: any) => h.year_val))).sort();
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    
+
     const data = explorerData.heatmap_matrix.map((h: any) => {
       const yIdx = years.indexOf(h.year_val);
       const mIdx = h.month_val - 1;
@@ -311,57 +406,42 @@ function App() {
 
     return {
       tooltip: {
+        ...tooltipStyle,
         position: "top",
-        formatter: (params: any) => {
-          return `Năm ${years[params.value[1]]} Th${params.value[0] + 1}<br/>Nhiệt độ: ${params.value[2]}°C`;
-        }
+        formatter: (p: any) => `Năm ${years[p.value[1]]} · Th${p.value[0] + 1}<br/><strong>${p.value[2]}°C</strong>`,
       },
-      grid: { height: "70%", top: "10%" },
-      xAxis: {
-        type: "category",
-        data: months.map(m => `Th${m}`),
-        splitArea: { show: true },
-        axisLabel: { color: "#ffffff" }
-      },
-      yAxis: {
-        type: "category",
-        data: years.map(String),
-        splitArea: { show: true },
-        axisLabel: { color: "#ffffff" }
-      },
+      grid: { height: "66%", top: "8%", left: 48, right: 24 },
+      xAxis: { type: "category", data: months.map((m) => `Th${m}`), splitArea: { show: true }, axisLabel, axisLine: axisLineSoft },
+      yAxis: { type: "category", data: years.map(String), splitArea: { show: true }, axisLabel, axisLine: axisLineSoft },
       visualMap: {
         min: 15,
         max: 32,
         calculable: true,
         orient: "horizontal",
         left: "center",
-        bottom: "0%",
-        textStyle: { color: "#ffffff" },
-        inRange: { color: ["#313695", "#4575b4", "#e0f3f8", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"] }
+        bottom: "2%",
+        textStyle: { color: PALETTE.inkSoft, fontFamily: SANS_FONT },
+        inRange: { color: TEMP_GRADIENT },
       },
       series: [
         {
           name: "Nhiệt độ TB",
           type: "heatmap",
-          data: data,
-          label: { show: true, color: "#000", fontSize: 9 },
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowColor: "rgba(0, 0, 0, 0.5)"
-            }
-          }
-        }
-      ]
+          data,
+          label: { show: true, color: PALETTE.ink, fontFamily: SANS_FONT, fontSize: 9 },
+          itemStyle: { borderColor: PALETTE.surface, borderWidth: 2 },
+          emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(40,50,30,0.25)" } },
+        },
+      ],
     };
   };
 
-  // 5. Heatmap: Pearson Correlation Matrix
+  // 5. Pearson correlation matrix
   const getCorrOption = () => {
     if (!relationshipData || !relationshipData.correlation_matrix) return {};
-    const variables = ["Nhiệt độ", "Lượng mưa", "Sức gió", "Bức xạ mặt trời"];
+    const variables = ["Nhiệt độ", "Lượng mưa", "Sức gió", "Bức xạ"];
     const varKeys = ["temperature_2m_mean", "precipitation_sum", "wind_speed_10m_max", "shortwave_radiation_sum"];
-    
+
     const data: any[] = [];
     varKeys.forEach((k1, i1) => {
       varKeys.forEach((k2, i2) => {
@@ -372,368 +452,385 @@ function App() {
 
     return {
       tooltip: {
-        formatter: (params: any) => {
-          return `${variables[params.value[1]]} vs ${variables[params.value[0]]}<br/>Hệ số tương quan: ${params.value[2]}`;
-        }
+        ...tooltipStyle,
+        formatter: (p: any) => `${variables[p.value[1]]} × ${variables[p.value[0]]}<br/>Hệ số: <strong>${p.value[2]}</strong>`,
       },
-      xAxis: { type: "category", data: variables, axisLabel: { color: "#ffffff", rotate: 20 } },
-      yAxis: { type: "category", data: variables, axisLabel: { color: "#ffffff" } },
+      grid: { height: "62%", top: "6%", left: 70, right: 24 },
+      xAxis: { type: "category", data: variables, axisLabel: { ...axisLabel, rotate: 18 }, axisLine: axisLineSoft },
+      yAxis: { type: "category", data: variables, axisLabel, axisLine: axisLineSoft },
       visualMap: {
         min: -1,
         max: 1,
         calculable: true,
         orient: "horizontal",
         left: "center",
-        bottom: "0%",
-        textStyle: { color: "#ffffff" },
-        inRange: { color: ["#4575b4", "#f7f7f7", "#d73027"] }
+        bottom: "2%",
+        textStyle: { color: PALETTE.inkSoft, fontFamily: SANS_FONT },
+        inRange: { color: CORR_GRADIENT },
       },
       series: [
         {
           name: "Tương quan Pearson",
           type: "heatmap",
-          data: data,
-          label: { show: true, formatter: (p: any) => p.value[2].toFixed(2), color: "#000000", fontWeight: "bold" }
-        }
-      ]
+          data,
+          label: { show: true, formatter: (p: any) => p.value[2].toFixed(2), color: PALETTE.ink, fontFamily: SANS_FONT, fontWeight: "bold" },
+          itemStyle: { borderColor: PALETTE.surface, borderWidth: 2 },
+        },
+      ],
     };
   };
 
-  // 6. Scatter Plot: Temperature vs Radiation
+  // 6. Radiation vs temperature scatter by region
   const getScatterOption = () => {
     if (!relationshipData || !relationshipData.scatter_sample) return {};
-    const samplesByRegion = {
+    const byRegion = {
       North: relationshipData.scatter_sample.filter((s: any) => s.region === "North"),
       Central: relationshipData.scatter_sample.filter((s: any) => s.region === "Central"),
-      South: relationshipData.scatter_sample.filter((s: any) => s.region === "South")
+      South: relationshipData.scatter_sample.filter((s: any) => s.region === "South"),
     };
+
+    const mkSeries = (region: keyof typeof byRegion, label: string) => ({
+      name: label,
+      type: "scatter",
+      data: byRegion[region].map((s: any) => [s.shortwave_radiation_sum, s.temperature_2m_mean]),
+      color: REGION_COLORS[region],
+      symbolSize: 7,
+      itemStyle: { opacity: 0.62 },
+    });
 
     return {
       tooltip: {
+        ...tooltipStyle,
         trigger: "item",
-        formatter: (params: any) => {
-          return `Miền: ${params.seriesName}<br/>Bức xạ: ${params.value[0]} MJ/m²<br/>Nhiệt độ: ${params.value[1]}°C`;
-        }
+        formatter: (p: any) => `${p.seriesName}<br/>Bức xạ: ${p.value[0]} MJ/m²<br/>Nhiệt độ: ${p.value[1]}°C`,
       },
-      legend: { data: ["North", "Central", "South"], textStyle: { color: "#ffffff" } },
-      xAxis: { type: "value", name: "Bức xạ (MJ/m²)", axisLabel: { color: "#ffffff" }, nameTextStyle: { color: "#ffffff" } },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", axisLabel: { color: "#ffffff" }, nameTextStyle: { color: "#ffffff" } },
-      series: [
-        {
-          name: "North",
-          type: "scatter",
-          data: samplesByRegion.North.map((s: any) => [s.shortwave_radiation_sum, s.temperature_2m_mean]),
-          color: "#5470c6",
-          symbolSize: 6,
-          opacity: 0.7
-        },
-        {
-          name: "Central",
-          type: "scatter",
-          data: samplesByRegion.Central.map((s: any) => [s.shortwave_radiation_sum, s.temperature_2m_mean]),
-          color: "#fac858",
-          symbolSize: 6,
-          opacity: 0.7
-        },
-        {
-          name: "South",
-          type: "scatter",
-          data: samplesByRegion.South.map((s: any) => [s.shortwave_radiation_sum, s.temperature_2m_mean]),
-          color: "#ee6666",
-          symbolSize: 6,
-          opacity: 0.7
-        }
-      ]
+      legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
+      grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
+      xAxis: { type: "value", name: "Bức xạ (MJ/m²)", axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
     };
   };
 
+  // ============================================================
+  //  Render
+  // ============================================================
+  const navItems = [
+    { id: "overview", label: "Tổng quan trạm đo", icon: "compass" as const },
+    { id: "explorer", label: "Khám phá khí hậu", icon: "trend" as const },
+    { id: "extreme", label: "Thời tiết cực đoan", icon: "alert" as const },
+    { id: "relationship", label: "Tương quan khí hậu", icon: "scatter" as const },
+    { id: "ai", label: "AI Analyst Portal", icon: "sparkle" as const },
+  ];
+
   return (
-    <div className="app-shell dark-mode">
-      <aside className="sidebar">
-        <div className="logo-section">
-          <div className="logo-dot"></div>
-          <span className="logo-text">Vietnam Climate Pulse</span>
+    <div className="app">
+      <aside className="rail">
+        <div className="rail__brand">
+          <span className="brand__mark">
+            <Icon name="leaf" size={22} />
+          </span>
+          <span>
+            <span className="brand__name">Climate Almanac</span>
+            <span className="brand__sub">Việt Nam · 2020–2025</span>
+          </span>
         </div>
-        <nav className="nav-menu">
-          <button
-            className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
-          >
-            📊 Tổng quan trạm đo
-          </button>
-          <button
-            className={activeTab === "explorer" ? "active" : ""}
-            onClick={() => setActiveTab("explorer")}
-          >
-            📈 Khám phá khí hậu
-          </button>
-          <button
-            className={activeTab === "extreme" ? "active" : ""}
-            onClick={() => setActiveTab("extreme")}
-          >
-            ⚠️ Thời tiết cực đoan
-          </button>
-          <button
-            className={activeTab === "relationship" ? "active" : ""}
-            onClick={() => setActiveTab("relationship")}
-          >
-            🔬 Tương quan khí hậu
-          </button>
-          <button
-            className={activeTab === "ai" ? "active" : ""}
-            onClick={() => setActiveTab("ai")}
-          >
-            🤖 AI Analyst Portal
-          </button>
+
+        <nav className="rail__nav">
+          {navItems.map((item, idx) => (
+            <button
+              key={item.id}
+              className={`nav__item ${activeTab === item.id ? "is-active" : ""}`}
+              onClick={() => setActiveTab(item.id)}
+            >
+              <span className="nav__index">{String(idx + 1).padStart(2, "0")}</span>
+              <Icon name={item.icon} size={19} />
+              <span className="nav__label">{item.label}</span>
+            </button>
+          ))}
         </nav>
-        <div className="sidebar-footer">
-          <p className="team-text">Nhóm Đồ án trực quan hóa</p>
-          <p className="version-text">v0.1.0 (DuckDB + Parquet)</p>
+
+        <div className="rail__foot">
+          <p className="foot__team">Nhóm Đồ án Trực quan hóa</p>
+          <p className="foot__ver">v0.1.0 · DuckDB + Parquet</p>
         </div>
       </aside>
 
-      <main className="content-area">
+      <main className="canvas">
         {error ? (
-          <div className="error-screen card">
-            <span className="error-icon">⚠️</span>
-            <h2>Không thể tải Dashboard</h2>
-            <p>{error}</p>
-            <p className="hint">Hãy chắc chắn rằng FastAPI Backend đang chạy tại {API_BASE_URL} và dữ liệu climate_daily.parquet đã sẵn sàng.</p>
+          <div className="screen screen--error">
+            <div className="screen__inner">
+              <Icon name="alert" size={36} />
+              <h2 className="display">Không thể tải bảng số liệu</h2>
+              <p>{error}</p>
+              <p className="screen__hint">
+                Hãy chắc chắn FastAPI Backend đang chạy tại {API_BASE_URL} và tệp
+                climate_daily.parquet đã sẵn sàng.
+              </p>
+            </div>
           </div>
         ) : loading ? (
-          <div className="loading-screen">
-            <div className="spinner"></div>
-            <p>Đang tải dữ liệu khí hậu Việt Nam...</p>
+          <div className="screen">
+            <div className="screen__inner">
+              <div className="spinner"></div>
+              <p>Đang đọc dữ liệu khí hậu Việt Nam…</p>
+            </div>
           </div>
         ) : (
           <>
-            {/* TAB: OVERVIEW */}
+            {/* ---------- OVERVIEW ---------- */}
             {activeTab === "overview" && (
-              <div className="tab-pane animate-fade">
-                <header className="page-header">
+              <div className="tab">
+                <header className="masthead masthead--row">
                   <div>
-                    <span className="eyebrow">Trang chính</span>
-                    <h2>Bức tranh Khí hậu Việt Nam</h2>
+                    <p className="eyebrow">Trang chính</p>
+                    <h1 className="display">Bức tranh khí hậu Việt Nam</h1>
                   </div>
-                  <button className="btn-primary" onClick={() => setActiveTab("ai")}>
-                    💬 Hỏi AI Analyst
+                  <button className="btn btn--primary" onClick={() => setActiveTab("ai")}>
+                    <Icon name="message" size={18} /> Hỏi AI Analyst
                   </button>
                 </header>
 
-                <div className="kpi-grid">
-                  <div className="kpi-card hover-glow">
-                    <span className="kpi-label">Tổng số trạm đo</span>
-                    <strong className="kpi-value">{stations.length} Trạm</strong>
+                <section className="stat-strip">
+                  <div className="stat reveal" style={stagger(0)}>
+                    <span className="stat__num tnum">
+                      {stations.length}
+                      <small>trạm</small>
+                    </span>
+                    <span className="stat__lbl">Mạng lưới quan trắc</span>
                   </div>
-                  <div className="kpi-card hover-glow">
-                    <span className="kpi-label">Tổng số bản ghi ngày</span>
-                    <strong className="kpi-value">61.376 Ngày</strong>
+                  <div className="stat reveal" style={stagger(1)}>
+                    <span className="stat__num tnum">61.376</span>
+                    <span className="stat__lbl">Bản ghi theo ngày</span>
                   </div>
-                  <div className="kpi-card hover-glow">
-                    <span className="kpi-label">Khoảng thời gian</span>
-                    <strong className="kpi-value">2020 - 2025 (6 năm)</strong>
+                  <div className="stat reveal" style={stagger(2)}>
+                    <span className="stat__num tnum">
+                      6<small>năm liên tục</small>
+                    </span>
+                    <span className="stat__lbl">Phạm vi 2020 – 2025</span>
                   </div>
-                </div>
+                </section>
 
-                <div className="panel-grid">
-                  <div className="panel card map-container">
+                <div className="overview-grid">
+                  <figure className="panel map-figure reveal" style={stagger(3)}>
+                    <button className="map-reset" onClick={resetMapView} title="Đưa bản đồ về mặc định">
+                      <Icon name="compass" size={14} /> Đặt lại
+                    </button>
                     <ReactECharts
+                      ref={mapRef}
                       option={getMapOption()}
-                      style={{ height: "450px", width: "100%" }}
+                      style={{ height: "480px", width: "100%" }}
                       onEvents={{ click: onChartClick }}
                     />
-                  </div>
-                  <div className="panel card station-detail">
-                    <span className="eyebrow">Chi tiết trạm đo</span>
-                    <h3>📍 {activeStationData?.location} ({activeStationData?.region})</h3>
-                    <div className="station-kpis">
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Nhiệt độ trung bình</span>
-                        <strong className="skpi-val">{activeStationData?.avg_temp}°C</strong>
+                  </figure>
+
+                  <aside className="panel station reveal" style={stagger(4)}>
+                    <span className="panel__label">Chi tiết trạm đo</span>
+                    <div className="station__head">
+                      <h3 className="station__name">{activeStationData?.location}</h3>
+                      <span
+                        className="region-chip"
+                        style={{ color: REGION_COLORS[activeStationData?.region] }}
+                      >
+                        {REGION_VI[activeStationData?.region] || activeStationData?.region}
+                      </span>
+                    </div>
+                    <div className="station__metrics">
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="thermometer" size={17} /> Nhiệt độ trung bình
+                        </span>
+                        <span className="metric__val tnum">{activeStationData?.avg_temp}°C</span>
                       </div>
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Nhiệt độ cao nhất lịch sử</span>
-                        <strong className="skpi-val heat-text">{activeStationData?.max_temp}°C</strong>
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="thermometer" size={17} /> Cao nhất lịch sử
+                        </span>
+                        <span className="metric__val tnum is-hot">{activeStationData?.max_temp}°C</span>
                       </div>
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Nhiệt độ thấp nhất lịch sử</span>
-                        <strong className="skpi-val cold-text">{activeStationData?.min_temp}°C</strong>
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="thermometer" size={17} /> Thấp nhất lịch sử
+                        </span>
+                        <span className="metric__val tnum is-cold">{activeStationData?.min_temp}°C</span>
                       </div>
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Lượng mưa trung bình năm</span>
-                        <strong className="skpi-val rain-text">{activeStationData?.annual_precip} mm</strong>
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="droplet" size={17} /> Lượng mưa trung bình năm
+                        </span>
+                        <span className="metric__val tnum is-rain">{activeStationData?.annual_precip} mm</span>
                       </div>
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Tốc độ gió trung bình</span>
-                        <strong className="skpi-val">{activeStationData?.avg_wind} km/h</strong>
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="wind" size={17} /> Tốc độ gió trung bình
+                        </span>
+                        <span className="metric__val tnum">{activeStationData?.avg_wind} km/h</span>
                       </div>
-                      <div className="station-kpi-item">
-                        <span className="skpi-lbl">Bức xạ mặt trời trung bình</span>
-                        <strong className="skpi-val">{activeStationData?.avg_radiation} MJ/m²</strong>
+                      <div className="metric">
+                        <span className="metric__lbl">
+                          <Icon name="sun" size={17} /> Bức xạ mặt trời trung bình
+                        </span>
+                        <span className="metric__val tnum">{activeStationData?.avg_radiation} MJ/m²</span>
                       </div>
                     </div>
-                  </div>
+                  </aside>
                 </div>
               </div>
             )}
 
-            {/* TAB: EXPLORER */}
+            {/* ---------- EXPLORER ---------- */}
             {activeTab === "explorer" && (
-              <div className="tab-pane animate-fade">
-                <header className="page-header">
+              <div className="tab">
+                <header className="masthead masthead--row">
                   <div>
-                    <span className="eyebrow">Khám phá</span>
-                    <h2>Xu hướng & Mùa vụ Khí hậu</h2>
+                    <p className="eyebrow">Khám phá</p>
+                    <h1 className="display">Xu hướng &amp; mùa vụ khí hậu</h1>
                   </div>
-                  <div className="filter-controls">
-                    <label>Chọn trạm đo: </label>
-                    <select
-                      className="form-select"
-                      value={explorerLocation}
-                      onChange={(e) => setExplorerLocation(e.target.value)}
-                    >
-                      <option value="All">Tất cả trạm</option>
-                      {stations.map((s) => (
-                        <option key={s.location} value={s.location}>
-                          {s.location} ({s.region})
-                        </option>
-                      ))}
-                    </select>
+                  <div className="filters">
+                    <label className="field">
+                      <span>Trạm đo</span>
+                      <select
+                        className="select"
+                        value={explorerLocation}
+                        onChange={(e) => setExplorerLocation(e.target.value)}
+                      >
+                        <option value="All">Tất cả trạm</option>
+                        {stations.map((s) => (
+                          <option key={s.location} value={s.location}>
+                            {s.location} ({REGION_VI[s.region]})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </header>
 
-                <div className="charts-grid-2">
-                  <div className="panel card">
-                    <span className="eyebrow">Chu kỳ Nhiệt độ theo Tháng</span>
-                    <div className="chart-wrapper">
+                <div className="grid-2">
+                  <div className="panel chart-card reveal" style={stagger(0)}>
+                    <span className="panel__label">Chu kỳ nhiệt độ theo tháng</span>
+                    <div className="chart-wrap">
                       {explorerData ? (
                         <ReactECharts option={getTempTrendOption()} style={{ height: "300px" }} />
                       ) : (
-                        <p>Đang tải biểu đồ...</p>
+                        <div className="chart-placeholder" style={{ height: 300 }}>Đang dựng biểu đồ…</div>
                       )}
                     </div>
                   </div>
-                  <div className="panel card">
-                    <span className="eyebrow">Phân bố Lượng mưa trung bình theo Tháng</span>
-                    <div className="chart-wrapper">
+                  <div className="panel chart-card reveal" style={stagger(1)}>
+                    <span className="panel__label">Lượng mưa trung bình theo tháng</span>
+                    <div className="chart-wrap">
                       {explorerData ? (
                         <ReactECharts option={getRainTrendOption()} style={{ height: "300px" }} />
                       ) : (
-                        <p>Đang tải biểu đồ...</p>
+                        <div className="chart-placeholder" style={{ height: 300 }}>Đang dựng biểu đồ…</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="panel chart-card span-2 reveal" style={stagger(2)}>
+                    <span className="panel__label">Heatmap mùa vụ · nhiệt độ trung bình (Tháng × Năm)</span>
+                    <div className="chart-wrap">
+                      {explorerData ? (
+                        <ReactECharts option={getHeatmapOption()} style={{ height: "360px" }} />
+                      ) : (
+                        <div className="chart-placeholder" style={{ height: 360 }}>Đang dựng heatmap…</div>
                       )}
                     </div>
                   </div>
                 </div>
-
-                <div className="panel card heatmap-panel">
-                  <span className="eyebrow">Heatmap Mùa vụ: Nhiệt độ trung bình Tháng x Năm</span>
-                  <div className="chart-wrapper" style={{ marginTop: "15px" }}>
-                    {explorerData ? (
-                      <ReactECharts option={getHeatmapOption()} style={{ height: "350px" }} />
-                    ) : (
-                      <p>Đang tải heatmap...</p>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* TAB: EXTREME EVENTS */}
+            {/* ---------- EXTREME EVENTS ---------- */}
             {activeTab === "extreme" && (
-              <div className="tab-pane animate-fade">
-                <header className="page-header">
-                  <div>
-                    <span className="eyebrow">Cảnh báo</span>
-                    <h2>Thời tiết và Thiên tai cực đoan</h2>
-                  </div>
-                  <div className="filter-controls">
-                    <label>Lọc địa điểm: </label>
-                    <select
-                      className="form-select"
-                      value={extremeLocFilter}
-                      onChange={(e) => setExtremeLocFilter(e.target.value)}
-                      style={{ marginRight: "15px" }}
-                    >
-                      <option value="All">Tất cả địa điểm</option>
-                      {stations.map((s) => (
-                        <option key={s.location} value={s.location}>
-                          {s.location}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    <label style={{ marginLeft: "15px" }}>Ngưỡng nóng (°C): </label>
-                    <input
-                      type="range"
-                      min="35"
-                      max="42"
-                      step="0.5"
-                      value={tempThreshold}
-                      onChange={(e) => setTempThreshold(parseFloat(e.target.value))}
-                    />
-                    <span className="threshold-val">{tempThreshold}°C</span>
-                    
-                    <label style={{ marginLeft: "15px" }}>Ngưỡng mưa ngày (mm): </label>
-                    <input
-                      type="range"
-                      min="50"
-                      max="200"
-                      step="10"
-                      value={rainThreshold}
-                      onChange={(e) => setRainThreshold(parseFloat(e.target.value))}
-                    />
-                    <span className="threshold-val">{rainThreshold} mm</span>
+              <div className="tab">
+                <header className="masthead">
+                  <p className="eyebrow">Cảnh báo</p>
+                  <h1 className="display">Thời tiết &amp; thiên tai cực đoan</h1>
+                  <div className="filters" style={{ marginTop: 22 }}>
+                    <label className="field">
+                      <span>Địa điểm</span>
+                      <select
+                        className="select"
+                        value={extremeLocFilter}
+                        onChange={(e) => setExtremeLocFilter(e.target.value)}
+                      >
+                        <option value="All">Tất cả địa điểm</option>
+                        {stations.map((s) => (
+                          <option key={s.location} value={s.location}>
+                            {s.location}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="range-field">
+                      <div className="range-field__top">
+                        <span>Ngưỡng nắng nóng</span>
+                        <span className="range__val tnum">{tempThreshold}°C</span>
+                      </div>
+                      <input type="range" min="35" max="42" step="0.5" value={tempThreshold} onChange={(e) => setTempThreshold(parseFloat(e.target.value))} />
+                    </div>
+                    <div className="range-field">
+                      <div className="range-field__top">
+                        <span>Ngưỡng mưa ngày</span>
+                        <span className="range__val tnum">{rainThreshold} mm</span>
+                      </div>
+                      <input type="range" min="50" max="200" step="10" value={rainThreshold} onChange={(e) => setRainThreshold(parseFloat(e.target.value))} />
+                    </div>
                   </div>
                 </header>
 
-                <div className="panel-grid-2">
-                  <div className="panel card counts-panel">
-                    <span className="eyebrow">Tổng số ngày cực đoan theo Trạm đo</span>
-                    <div className="table-wrapper">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Địa điểm</th>
-                            <th>Nắng nóng cực đoan (≥38.0°C)</th>
-                            <th>Mưa lớn lịch sử (≥100.0mm)</th>
+                <div className="extreme-grid">
+                  <div className="panel reveal" style={stagger(0)}>
+                    <span className="panel__label">Tổng số ngày cực đoan theo trạm</span>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Địa điểm</th>
+                          <th>Nắng nóng ≥38°C</th>
+                          <th>Mưa lớn ≥100mm</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {extremeData?.counts_by_location.slice(0, 10).map((c: any) => (
+                          <tr key={c.location}>
+                            <td><strong>{c.location}</strong></td>
+                            <td className="num-hot">{c.hot_days_count}</td>
+                            <td className="num-rain">{c.wet_days_count}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {extremeData?.counts_by_location.slice(0, 10).map((c: any) => (
-                            <tr key={c.location}>
-                              <td><strong>{c.location}</strong></td>
-                              <td className="heat-text">{c.hot_days_count} ngày</td>
-                              <td className="rain-text">{c.wet_days_count} ngày</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
-                  <div className="panel card logs-panel">
-                    <span className="eyebrow">Nhật ký các ngày thời tiết cực đoan vượt ngưỡng lọc</span>
-                    <div className="extreme-tabs">
-                      <div className="extreme-tab-sec">
-                        <h4>🔥 Đợt nắng nóng vượt ngưỡng ({extremeData?.hot_days.length || 0} ngày)</h4>
-                        <div className="scroll-box">
+                  <div className="panel reveal" style={stagger(1)}>
+                    <span className="panel__label">Nhật ký các ngày vượt ngưỡng lọc</span>
+                    <div className="ledger">
+                      <div>
+                        <div className="ledger__head">
+                          <Icon name="thermometer" size={18} className="ic-hot" />
+                          Nắng nóng ({extremeData?.hot_days.length || 0})
+                        </div>
+                        <div className="scroll">
                           {extremeData?.hot_days.slice(0, 30).map((h: any, idx: number) => (
-                            <div className="log-item" key={idx}>
-                              <span className="log-date">{h.date}</span>
-                              <span className="log-loc">{h.location}</span>
-                              <strong className="log-val heat-text">{h.temperature_2m_max}°C</strong>
+                            <div className="entry" key={idx}>
+                              <span className="entry__date">{h.date}</span>
+                              <span className="entry__loc">{h.location}</span>
+                              <span className="entry__val is-hot">{h.temperature_2m_max}°C</span>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div className="extreme-tab-sec">
-                        <h4>🌧️ Đợt mưa lớn vượt ngưỡng ({extremeData?.wet_days.length || 0} ngày)</h4>
-                        <div className="scroll-box">
+                      <div>
+                        <div className="ledger__head">
+                          <Icon name="droplet" size={18} className="ic-rain" />
+                          Mưa lớn ({extremeData?.wet_days.length || 0})
+                        </div>
+                        <div className="scroll">
                           {extremeData?.wet_days.slice(0, 30).map((w: any, idx: number) => (
-                            <div className="log-item" key={idx}>
-                              <span className="log-date">{w.date}</span>
-                              <span className="log-loc">{w.location}</span>
-                              <strong className="log-val rain-text">{w.precipitation_sum} mm</strong>
+                            <div className="entry" key={idx}>
+                              <span className="entry__date">{w.date}</span>
+                              <span className="entry__loc">{w.location}</span>
+                              <span className="entry__val is-rain">{w.precipitation_sum} mm</span>
                             </div>
                           ))}
                         </div>
@@ -744,34 +841,32 @@ function App() {
               </div>
             )}
 
-            {/* TAB: RELATIONSHIP LAB */}
+            {/* ---------- RELATIONSHIP LAB ---------- */}
             {activeTab === "relationship" && (
-              <div className="tab-pane animate-fade">
-                <header className="page-header">
-                  <div>
-                    <span className="eyebrow">Phòng thí nghiệm</span>
-                    <h2>Tương quan & Quan hệ đa biến</h2>
-                  </div>
+              <div className="tab">
+                <header className="masthead">
+                  <p className="eyebrow">Phòng thí nghiệm</p>
+                  <h1 className="display">Tương quan &amp; quan hệ đa biến</h1>
                 </header>
 
-                <div className="panel-grid">
-                  <div className="panel card">
-                    <span className="eyebrow">Ma trận tương quan Pearson</span>
-                    <div className="chart-wrapper" style={{ marginTop: "15px" }}>
+                <div className="grid-2">
+                  <div className="panel chart-card reveal" style={stagger(0)}>
+                    <span className="panel__label">Ma trận tương quan Pearson</span>
+                    <div className="chart-wrap">
                       {relationshipData ? (
                         <ReactECharts option={getCorrOption()} style={{ height: "380px" }} />
                       ) : (
-                        <p>Đang tính toán hệ số tương quan...</p>
+                        <div className="chart-placeholder" style={{ height: 380 }}>Đang tính hệ số tương quan…</div>
                       )}
                     </div>
                   </div>
-                  <div className="panel card">
-                    <span className="eyebrow">Tương quan: Bức xạ mặt trời vs Nhiệt độ trung bình ngày</span>
-                    <div className="chart-wrapper" style={{ marginTop: "15px" }}>
+                  <div className="panel chart-card reveal" style={stagger(1)}>
+                    <span className="panel__label">Bức xạ mặt trời vs nhiệt độ trung bình ngày</span>
+                    <div className="chart-wrap">
                       {relationshipData ? (
                         <ReactECharts option={getScatterOption()} style={{ height: "380px" }} />
                       ) : (
-                        <p>Đang tải biểu đồ scatter...</p>
+                        <div className="chart-placeholder" style={{ height: 380 }}>Đang tải biểu đồ phân tán…</div>
                       )}
                     </div>
                   </div>
@@ -779,83 +874,95 @@ function App() {
               </div>
             )}
 
-            {/* TAB: AI ANALYST PORTAL */}
+            {/* ---------- AI ANALYST PORTAL ---------- */}
             {activeTab === "ai" && (
-              <div className="tab-pane animate-fade">
-                <header className="page-header">
-                  <div>
-                    <span className="eyebrow">AI Portal</span>
-                    <h2>AI Analyst Portal (Human-in-the-loop)</h2>
-                  </div>
+              <div className="tab">
+                <header className="masthead">
+                  <p className="eyebrow">AI Portal · Human-in-the-loop</p>
+                  <h1 className="display">Trợ lý phân tích AI</h1>
+                  <p className="lede">
+                    AI đề xuất mã SQL kèm giải thích. Bạn xem, chỉnh sửa và phê duyệt trước —
+                    truy vấn chỉ chạy chỉ-đọc trên dữ liệu cục bộ sau khi bạn đồng ý.
+                  </p>
                 </header>
 
-                <div className="ai-layout">
-                  <div className="panel card ai-chat-panel">
-                    <span className="eyebrow">Khung yêu cầu phân tích</span>
-                    <form onSubmit={handleAskAI} className="ai-input-form">
+                <div className="ai">
+                  <div className="panel">
+                    <span className="panel__label">Khung yêu cầu phân tích</span>
+                    <form onSubmit={handleAskAI} className="ask__form">
                       <textarea
-                        className="ai-textarea"
-                        placeholder="Hãy nhập câu hỏi phân tích dữ liệu khí hậu (Ví dụ: So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa...)"
+                        className="ask__input"
+                        placeholder="Nhập câu hỏi phân tích khí hậu (ví dụ: So sánh lượng mưa giữa Đà Nẵng và TP. Hồ Chí Minh theo mùa…)"
                         value={aiQuestion}
                         onChange={(e) => setAiQuestion(e.target.value)}
                       />
-                      <button type="submit" className="btn-primary" disabled={aiLoading}>
-                        {aiLoading ? "Đang xử lý..." : "⚡ Sinh đề xuất phân tích (SQL)"}
+                      <button type="submit" className="btn btn--primary" disabled={aiLoading}>
+                        <Icon name="sparkle" size={18} />
+                        {aiLoading ? "Đang xử lý…" : "Sinh đề xuất phân tích (SQL)"}
                       </button>
                     </form>
 
-                    <div className="suggested-questions">
-                      <p>💡 Gợi ý phân tích nhanh:</p>
-                      <button onClick={() => handleSuggestQuestion("So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa.")}>
-                        ⛈️ So sánh mưa Đà Nẵng và HCMC
-                      </button>
-                      <button onClick={() => handleSuggestQuestion("Tìm các tháng có nhiệt độ bất thường tại Hà Nội.")}>
-                        🔥 Nhiệt độ bất thường Hà Nội
-                      </button>
-                      <button onClick={() => handleSuggestQuestion("Nhóm các địa điểm có đặc điểm khí hậu tương đồng.")}>
-                        🌍 Phân cụm khí hậu tương đồng
-                      </button>
-                      <button onClick={() => handleSuggestQuestion("Kiểm tra quan hệ lượng mưa và bức xạ mặt trời ở ba miền.")}>
-                        ☀️ Quan hệ mưa & bức xạ mặt trời
-                      </button>
+                    <div className="suggest">
+                      <p className="suggest__title">Gợi ý phân tích nhanh</p>
+                      <div className="chips">
+                        <button className="chip" onClick={() => handleSuggestQuestion("So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa.")}>
+                          <Icon name="droplet" size={15} /> So sánh mưa Đà Nẵng &amp; HCMC
+                        </button>
+                        <button className="chip" onClick={() => handleSuggestQuestion("Tìm các tháng có nhiệt độ bất thường tại Hà Nội.")}>
+                          <Icon name="thermometer" size={15} /> Nhiệt độ bất thường Hà Nội
+                        </button>
+                        <button className="chip" onClick={() => handleSuggestQuestion("Nhóm các địa điểm có đặc điểm khí hậu tương đồng.")}>
+                          <Icon name="compass" size={15} /> Phân cụm khí hậu tương đồng
+                        </button>
+                        <button className="chip" onClick={() => handleSuggestQuestion("Kiểm tra quan hệ lượng mưa và bức xạ mặt trời ở ba miền.")}>
+                          <Icon name="sun" size={15} /> Quan hệ mưa &amp; bức xạ
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {aiError && (
-                    <div className="ai-error card">
-                      <strong>Lỗi:</strong> {aiError}
+                    <div className="ai-alert">
+                      <Icon name="alert" size={18} /> {aiError}
                     </div>
                   )}
 
                   {currentProposal && (
-                    <div className="panel card ai-proposal-panel animate-slide-up">
-                      <span className="proposal-badge">{currentProposal.status.toUpperCase()}</span>
-                      <span className="eyebrow">Đề xuất phân tích được tạo</span>
-                      <h3>Câu hỏi: "{currentProposal.question}"</h3>
-                      
-                      <div className="proposal-details">
-                        <div className="sql-box">
-                          <label>Câu lệnh SQL đề xuất (Bạn có thể sửa trực tiếp):</label>
-                          <textarea
-                            className="sql-textarea"
-                            value={proposalSql}
-                            onChange={(e) => setProposalSql(e.target.value)}
-                            disabled={currentProposal.status === "executed"}
-                          />
-                        </div>
-                        <div className="explanation-box">
-                          <p><strong>Giải thích ý nghĩa:</strong></p>
-                          <p>{currentProposal.explanation}</p>
-                        </div>
+                    <div className="panel proposal">
+                      <div className="proposal__top">
+                        <span className={`status-badge ${currentProposal.status === "executed" ? "is-executed" : ""}`}>
+                          {currentProposal.status.toUpperCase()}
+                        </span>
+                        <span className="panel__label" style={{ margin: 0 }}>Đề xuất phân tích</span>
+                      </div>
+                      <h3 className="proposal__q">“{currentProposal.question}”</h3>
+
+                      <div className="sql">
+                        <label className="sql__label">
+                          <Icon name="edit" size={13} /> Câu lệnh SQL — có thể chỉnh trực tiếp
+                        </label>
+                        <textarea
+                          className="sql__editor"
+                          value={proposalSql}
+                          onChange={(e) => setProposalSql(e.target.value)}
+                          disabled={currentProposal.status === "executed"}
+                          spellCheck={false}
+                        />
+                      </div>
+
+                      <div className="explain">
+                        <span className="explain__label">Giải thích</span>
+                        <p>{currentProposal.explanation}</p>
                       </div>
 
                       {currentProposal.status !== "executed" && (
-                        <div className="proposal-actions">
-                          <button className="btn-danger" onClick={handleRejectProposal}>
-                            ✖️ Hủy bỏ đề xuất
+                        <div className="proposal__actions">
+                          <button className="btn btn--danger" onClick={handleRejectProposal}>
+                            <Icon name="close" size={17} /> Hủy đề xuất
                           </button>
-                          <button className="btn-success" onClick={handleApproveAndExecute} disabled={aiExecLoading}>
-                            {aiExecLoading ? "Đang thực thi..." : "✔️ Phê duyệt & Chạy local"}
+                          <button className="btn btn--success" onClick={handleApproveAndExecute} disabled={aiExecLoading}>
+                            <Icon name="play" size={17} />
+                            {aiExecLoading ? "Đang thực thi…" : "Phê duyệt & chạy local"}
                           </button>
                         </div>
                       )}
@@ -863,12 +970,13 @@ function App() {
                   )}
 
                   {aiExecResults && (
-                    <div className="panel card ai-results-panel animate-fade">
-                      <span className="eyebrow">Kết quả phân tích SQL cục bộ</span>
-                      <h3>Có {aiExecResults.length} dòng dữ liệu được trả về</h3>
-                      
-                      <div className="table-wrapper ai-results-table">
-                        <table>
+                    <div className="panel results">
+                      <span className="panel__label">Kết quả truy vấn cục bộ</span>
+                      <p className="results__count">
+                        Trả về <b>{aiExecResults.length}</b> dòng dữ liệu
+                      </p>
+                      <div className="table-scroll">
+                        <table className="table">
                           <thead>
                             <tr>
                               {Object.keys(aiExecResults[0] || {}).map((col) => (
@@ -886,7 +994,9 @@ function App() {
                             ))}
                           </tbody>
                         </table>
-                        {aiExecResults.length > 15 && <p className="table-hint">... chỉ hiển thị 15 dòng đầu tiên.</p>}
+                        {aiExecResults.length > 15 && (
+                          <p className="table-hint">… chỉ hiển thị 15 dòng đầu tiên.</p>
+                        )}
                       </div>
                     </div>
                   )}
