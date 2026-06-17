@@ -19,23 +19,42 @@ docs/             Tài liệu dữ liệu dùng chung
 report/           Báo cáo LaTeX
 ```
 
+## Yêu cầu môi trường
+
+- Python >= 3.11
+- Node.js >= 18
+
+## Cấu hình môi trường (AI)
+
+Sao chép file mẫu rồi điền API key (để trống nếu chỉ chạy AI ở chế độ mock offline):
+
+```bash
+cp application/.env.example application/.env
+```
+
+Backend hỗ trợ mọi nhà cung cấp chuẩn OpenAI (OpenAI, Groq, OpenRouter, GitHub Models, Ollama)
+qua các biến `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `AI_MODEL`. Nếu không có key, AI tự chạy
+chế độ mock offline.
+
 ## Khởi động nhanh
 
 ### Backend
 
-```powershell
+```bash
 cd application/backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --env-file ../.env
 ```
+
+> Bắt buộc có cờ `--env-file ../.env` thì API key và đường dẫn dữ liệu mới được nạp vào môi trường.
 
 API docs: `http://localhost:8000/docs`
 
 ### Frontend
 
-```powershell
+```bash
 cd application/frontend
 npm install
 npm run dev
