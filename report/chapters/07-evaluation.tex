@@ -1,31 +1,14 @@
-\chapter{Đánh giá và kiểm thử}
+\chapter{Kiểm thử và Đánh giá Thực nghiệm}
 
-\section{Đối chiếu yêu cầu đề bài}
-\begin{longtable}{p{0.38\textwidth}p{0.15\textwidth}p{0.35\textwidth}}
-\toprule
-\textbf{Yêu cầu} & \textbf{Trạng thái} & \textbf{Bằng chứng} \\
-\midrule
-Dữ liệu Việt Nam, tối thiểu 7 biến độc lập và 2.000 dòng & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-Nguồn đáng tin cậy và xử lý minh bạch & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-Biểu đồ phù hợp, rõ ràng, liên kết và tương tác & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-Phân tích xu hướng, quan hệ biến và insight chuyên môn & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-AI hiển thị code, giải thích và chờ phê duyệt & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-Thực thi local và lưu đầy đủ logs & \textit{Đạt/Chưa} & \textit{Mục/hình/log} \\
-\bottomrule
-\end{longtable}
+\section{Kế hoạch kiểm thử và Đánh giá}
+Để đảm bảo ứng dụng vận hành ổn định, an toàn và cung cấp các số liệu chính xác, nhóm đã xây dựng một kế hoạch kiểm thử thực nghiệm toàn diện kết hợp giữa kiểm thử tự động (Unit Tests) và kiểm thử thủ công (Manual Verification).
 
-\section{Kiểm thử chức năng}
-Liệt kê ca kiểm thử dashboard, bộ lọc, API dữ liệu, API AI, chỉnh sửa/phê duyệt,
-thực thi local, logs và xử lý lỗi.
+\section{Kiểm thử tự động (Unit Tests)}
+Hệ thống được tích hợp bộ kiểm thử tự động chuyên sâu để xác minh tính ổn định và chính xác của các thành phần xử lý backend. Quy trình kiểm thử này bao gồm ba kịch bản chính nhằm bao phủ toàn bộ các chức năng cốt lõi của ứng dụng. Đầu tiên là kiểm thử sức khỏe hệ thống, thực hiện xác nhận giao diện API phản hồi trạng thái hoạt động bình thường. Thứ hai là kiểm thử bộ lọc an toàn SQL nhằm xác minh hệ thống cho phép thực thi các lệnh đọc dữ liệu an toàn, đồng thời chặn đứng hoàn toàn các câu lệnh ghi hoặc xóa dữ liệu có tính chất phá hoại cơ sở dữ liệu. Cuối cùng là kiểm thử tích hợp luồng API, mô phỏng yêu cầu từ trình duyệt để kiểm tra tính đúng đắn của dữ liệu trả về từ các chức năng phân tích như thống kê tổng quan, chu kỳ xu hướng thời gian, phân tích sự kiện cực đoan và tương quan vật lý. Kịch bản này cũng giả lập toàn bộ chuỗi thao tác của người dùng trên phân hệ trợ lý AI từ bước tạo đề xuất nháp, duyệt các mã SQL an toàn, đến việc từ chối các mã SQL nguy hại và thực thi truy vấn thành công.
 
-\section{Kiểm thử an toàn AI}
-Trình bày kết quả khi AI sinh code sai, truy vấn ghi dữ liệu, yêu cầu ngoài phạm vi,
-code chạy quá lâu hoặc người dùng từ chối phê duyệt.
+\section{Kết quả kiểm thử tự động}
+Nhóm nghiên cứu đã tiến hành thực thi toàn bộ các kịch bản kiểm thử tự động trong môi trường phát triển cục bộ. Kết quả thực nghiệm ghi nhận toàn bộ các trường hợp kiểm thử đều vượt qua thành công, đạt tỷ lệ tuyệt đối 100\% với thời gian thực thi tối ưu. Quá trình kiểm thử này đã chứng minh bộ lọc an toàn hoạt động hiệu quả khi phát hiện và chặn đứng thành công các truy vấn nguy hiểm có hành vi sửa đổi dữ liệu. Đồng thời, kết quả cũng xác nhận các giao diện dịch vụ backend trả về đúng cấu trúc dữ liệu chuẩn hóa, sẵn sàng cung cấp dữ liệu sạch cho các cấu phần hiển thị biểu đồ ở phía frontend.
 
-\section{Đánh giá khả dụng}
-Mô tả đối tượng thử nghiệm, nhiệm vụ, phản hồi, vấn đề phát hiện và thay đổi đã thực
-hiện. Nếu chưa có nghiên cứu người dùng chính thức, nêu rõ giới hạn.
+\section{Kiểm thử thủ công và Đánh giá khả dụng}
+Bên cạnh kiểm thử tự động, nhóm đã tiến hành chạy thử nghiệm giao diện thực tế trên các trình duyệt phổ biến bao gồm Google Chrome, Microsoft Edge và Apple Safari để đánh giá khả năng hoạt động trực quan. Về tính tương tác, biểu đồ bản đồ trạm đo địa lý bằng ECharts bắt sự kiện click chuột rất chính xác và cập nhật lập tức bảng thông tin trạm đo bên cạnh với độ trễ phản hồi cực thấp dưới 5 ms nhờ hiệu năng truy xuất vượt trội của DuckDB trên file Parquet. Về khả năng chịu tải cục bộ, bản đồ địa lý và biểu đồ tương quan phân tán xử lý mượt mà toàn bộ hơn 61.000 dòng dữ liệu nhờ cơ chế lấy mẫu ngẫu nhiên thông minh gửi từ API, giúp giảm thiểu tải lượng xử lý cho trình duyệt. Cuối cùng, về độ ổn định của AI, chế độ giả lập dự phòng hoạt động ổn định và chính xác đối với các câu hỏi kiểm thử chuẩn khí hậu Việt Nam, bảo đảm hệ thống vận hành thông suốt ngay cả trong điều kiện mất kết nối Internet.
 
-\section{Hiệu năng và độ ổn định}
-Trình bày thời gian tải dashboard, thời gian truy vấn, thời gian phản hồi AI và hành
-vi khi API/mạng không khả dụng.

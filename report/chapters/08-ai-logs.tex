@@ -1,7 +1,7 @@
 \chapter{Nhật ký tương tác AI tiêu biểu}
 \label{app:ai-logs}
 
-Dưới đây là hai phiên nhật ký tiêu biểu trích xuất từ cơ sở dữ liệu nhật ký \texttt{ai\_sessions.sqlite3}:
+Dưới đây là hai phiên nhật ký tiêu biểu trích xuất từ cơ sở dữ liệu nhật ký của hệ thống:
 
 \subsection*{Phiên 1: So sánh lượng mưa miền}
 \begin{table}[H]
@@ -13,7 +13,7 @@ Dưới đây là hai phiên nhật ký tiêu biểu trích xuất từ cơ sở
 Yêu cầu người dùng
     & So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa. \\ \hline
 Ngữ cảnh dữ liệu
-    & Table \texttt{climate\_daily} với các cột: \texttt{date}, \texttt{location}, \texttt{precipitation\_sum}, v.v. \\ \hline
+    & Bảng dữ liệu khí hậu với các trường thông tin: ngày tháng, vị trí địa lý, lượng mưa ngày, v.v. \\ \hline
 Code AI đề xuất
     & \texttt{SELECT location, month(date) as thang,} \newline
       \texttt{~~AVG(precipitation\_sum) as luong\_mua\_trung\_binh} \newline
@@ -27,10 +27,8 @@ Thay đổi của con người
     & Không thay đổi (mã đề xuất hoàn hảo). \\ \hline
 Quyết định
     & Phê duyệt thực thi cục bộ. \\ \hline
-Kết quả thực thi
-    & Trả về 24 dòng dữ liệu thể hiện lượng mưa trung bình từng tháng cho 2 thành phố. \\ \hline
-Nhận xét
-    & Truy vấn chính xác, giải quyết trọn vẹn yêu cầu, tốc độ thực thi dưới 4ms. \\ \hline
+Kết quả thực thi & Trả về 24 dòng dữ liệu thể hiện lượng mưa trung bình từng tháng cho 2 thành phố. \\ \hline
+Nhận xét & Truy vấn chính xác, giải quyết trọn vẹn yêu cầu, tốc độ thực thi dưới 4ms. \\ \hline
 \end{tabularx}
 \end{table}
 
@@ -44,7 +42,7 @@ Nhận xét
 Yêu cầu người dùng
     & Tìm các tháng có nhiệt độ bất thường tại Hà Nội. \\ \hline
 Ngữ cảnh dữ liệu
-    & Table \texttt{climate\_daily} với các cột: \texttt{date}, \texttt{location}, \texttt{temperature\_2m\_max}, \texttt{temperature\_2m\_min}. \\ \hline
+    & Bảng dữ liệu khí hậu với các trường thông tin: ngày tháng, vị trí địa lý, nhiệt độ tối đa, nhiệt độ tối thiểu. \\ \hline
 Code AI đề xuất
     & \texttt{SELECT year(date) as nam, month(date) as thang,} \newline
       \texttt{~~AVG(temperature\_2m\_max) as temp\_max\_avg} \newline
@@ -59,9 +57,7 @@ Thay đổi của con người
     & Người dùng sửa điều kiện lọc thành \texttt{temperature\_2m\_max > 38.0} trực tiếp trong từng ngày thay vì dùng \texttt{HAVING} trên nhiệt độ trung bình tháng để tìm các ngày cực đoan thực sự. \\ \hline
 Quyết định
     & Chỉnh sửa và Phê duyệt thực thi. \\ \hline
-Kết quả thực thi
-    & Trả về danh sách các ngày nắng nóng đỉnh điểm vượt ngưỡng 38°C tại Hà Nội. \\ \hline
-Nhận xét
-    & AI hỗ trợ khung mã lệnh rất tốt, người dùng đóng vai trò hiệu chỉnh điều kiện lọc chi tiết (Human-in-the-loop) để cho ra kết quả chính xác theo ý muốn. \\ \hline
+Kết quả thực thi & Trả về danh sách các ngày nắng nóng đỉnh điểm vượt ngưỡng 38°C tại Hà Nội. \\ \hline
+Nhận xét & AI hỗ trợ khung mã lệnh rất tốt, người dùng đóng vai trò hiệu chỉnh điều kiện lọc chi tiết (Human-in-the-loop) để cho ra kết quả chính xác theo ý muốn. \\ \hline
 \end{tabularx}
 \end{table}

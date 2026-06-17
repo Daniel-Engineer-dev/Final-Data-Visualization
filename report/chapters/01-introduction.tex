@@ -1,34 +1,31 @@
-\chapter{Giới thiệu}
+\chapter{Khởi nguồn và Ý nghĩa Đề tài}
 
 \section{Bối cảnh và động lực}
-Trình bày bối cảnh thực tế tại Việt Nam, đối tượng chịu ảnh hưởng và lý do đề tài có
-giá trị. Dẫn nguồn cho các nhận định quan trọng.
+Việt Nam là một trong những quốc gia chịu ảnh hưởng nặng nề nhất bởi biến đổi khí hậu toàn cầu. Sự gia tăng tần suất và cường độ của các hiện tượng thời tiết cực đoan như nắng nóng gay gắt, hạn mặn và mưa lũ dị thường đã và đang tác động trực tiếp đến đời sống dân sinh, an ninh nguồn nước và sự phát triển kinh tế bền vững. Tuy nhiên, dữ liệu khí tượng thô thường rất phức tạp, phân tán và khó tiếp cận đối với đại đa số công chúng, sinh viên hoặc các nhà hoạch định chính sách phổ thông. Động lực của đề tài này là xây dựng một hệ thống trực quan hóa trực quan, sinh động để chuyển hóa dữ liệu số thô kệch thành các tri thức khí hậu dễ hiểu, phục vụ giáo dục, truyền thông và nghiên cứu cộng đồng.
 
 \section{Phát biểu vấn đề}
-Mô tả vấn đề mà dashboard hỗ trợ khám phá hoặc ra quyết định. Phân biệt rõ câu hỏi
-phân tích với giả thuyết cần kiểm chứng.
+Bài toán trung tâm của nghiên cứu được xác định là đánh giá diễn biến khí hậu và nhận diện các hiện tượng thời tiết cực đoan tại Việt Nam giai đoạn 2020-2025. Để làm rõ và giải quyết triệt để bài toán này, nhóm nghiên cứu tập trung khai thác ba khía cạnh phân tích cốt lõi liên quan chặt chẽ đến sự biến động thời tiết cục bộ.
 
-\section{Mục tiêu}
-\begin{itemize}
-    \item Mục tiêu tổng quát của sản phẩm.
-    \item Các mục tiêu phân tích có thể đo lường.
-    \item Mục tiêu của module AI trong quy trình phân tích.
-\end{itemize}
+Khía cạnh thứ nhất tập trung vào việc mô tả đặc trưng khí hậu ba miền nhằm trực quan hóa sự phân hóa sâu sắc về nhiệt độ trung bình, biên độ nhiệt và lượng mưa tích lũy giữa miền Bắc mang tính chất cận nhiệt đới biên độ rộng, miền Trung chịu tác động khắc nghiệt của gió phơn Tây Nam, và miền Nam với đặc thù nhiệt đới gió mùa ổn định quanh năm. Khía cạnh thứ hai hướng đến xây dựng thuật toán tự động nhận diện và thống kê các giá trị cực đoan, từ đó phát hiện, định lượng và lập bản đồ phân bố các ngày xảy ra thiên tai nắng nóng gay gắt hoặc mưa lớn lịch sử tại từng địa phương. Khía cạnh thứ ba nghiên cứu mối quan hệ tương quan đa biến giữa các thông số vật lý như bức xạ mặt trời, nhiệt độ, lượng mưa và tốc độ gió nhằm đúc kết những quy luật vật lý và xu hướng tác động mang tính khoa học.
+
+\section{Mục tiêu nghiên cứu}
+Mục tiêu tổng quát của nghiên cứu này là thiết lập một ứng dụng trực quan hóa tương tác (dashboard) về khí hậu Việt Nam theo kiến trúc cục bộ nhằm tối ưu hóa hiệu năng, đồng thời tích hợp trợ lý trí tuệ nhân tạo hỗ trợ phân tích ngôn ngữ tự nhiên.
+
+Về mặt trực quan hóa và khai phá dữ liệu, nghiên cứu hướng tới việc bản đồ hóa 28 trạm quan trắc khí tượng trọng điểm trên toàn lãnh thổ, đồng thời xây dựng các biểu đồ phân tích xu hướng thời gian theo chu kỳ tháng và biểu đồ nhiệt độ năm dưới dạng ma trận nhiệt độ. Hệ thống cũng tích hợp chức năng lọc động và thống kê các sự kiện cực đoan dựa trên các tham số ngưỡng linh hoạt do người dùng tùy chọn, kết hợp tính toán trực tiếp hệ số tương quan Pearson đa biến nhằm phục vụ nghiên cứu liên hệ vật lý. Song song với đó, mục tiêu tích hợp mô hình ngôn ngữ lớn làm trợ lý ảo nhằm mục đích hỗ trợ người dùng phi kỹ thuật dễ dàng tạo và thực thi các câu lệnh truy vấn SQL từ ngôn ngữ tự nhiên một cách an toàn và có kiểm soát thông qua cơ chế phê duyệt thủ công.
 
 \section{Câu hỏi phân tích}
+Để cụ thể hóa các mục tiêu trên, nghiên cứu đặt ra bốn nhóm câu hỏi phân tích thời tiết cốt lõi trong thực tế:
 \begin{enumerate}
-    \item \textit{Câu hỏi về tổng quan hoặc phân bố.}
-    \item \textit{Câu hỏi về thay đổi và xu hướng theo thời gian.}
-    \item \textit{Câu hỏi về mối quan hệ giữa các biến.}
-    \item \textit{Câu hỏi chuyên môn hoặc hỗ trợ quyết định.}
+    \item \textbf{Về mặt tổng quan địa lý:} Miền nào có nền nhiệt độ trung bình cao nhất cả nước và sự khác biệt nhiệt độ nền giữa ba miền Bắc, Trung, Nam biến động ra sao trong giai đoạn sáu năm khảo sát?
+    \item \textbf{Về xu hướng thời gian:} Chu kỳ mùa mưa của miền Trung dịch chuyển lệch pha như thế nào so với hai miền còn lại và liệu có dấu hiệu nóng lên toàn cầu thông qua sự gia tăng nhiệt độ nền hàng năm hay không?
+    \item \textbf{Đối với phân tích mối quan hệ vật lý:} Mối tương quan thuận nghịch giữa bức xạ mặt trời sóng ngắn và nhiệt độ không khí trung bình ngày thể hiện thế nào, và lượng mưa lớn cùng độ phủ mây tác động ra sao tới lượng bức xạ nhận được?
+    \item \textbf{Về mặt cực đoan khí hậu:} Những địa phương nào có tần suất nắng nóng gay gắt lớn nhất, và thời điểm cũng như lượng mưa của đợt thiên tai mưa lớn lịch sử tại khu vực miền Trung là bao nhiêu để hỗ trợ đưa ra các khuyến cáo an toàn?
 \end{enumerate}
+\newpage
+\section{Đối tượng sử dụng và phạm vi nghiên cứu}
+Đối tượng sử dụng hướng tới của ứng dụng bao gồm học sinh, sinh viên học tập trong các khối ngành địa lý và khoa học môi trường cần số liệu trực quan thực nghiệm, các tuyên truyền viên về biến đổi khí hậu cần công cụ trực quan hóa sinh động, và cộng đồng dân cư quan tâm đến các chỉ số thời tiết địa phương.
 
-\section{Đối tượng sử dụng và phạm vi}
-Mô tả người dùng mục tiêu, nhu cầu, phạm vi không gian/thời gian và các nội dung
-không thuộc phạm vi dự án.
+Về phạm vi không gian, nghiên cứu giới hạn phân tích tại 28 trạm quan trắc khí tượng phân bố đều trên khắp lãnh thổ Việt Nam, đại diện cho các đặc thù vi khí hậu lục địa và hải đảo. Về phạm vi thời gian, dữ liệu được khai thác liên tục trong giai đoạn sáu năm, từ ngày 01 tháng 01 năm 2020 đến hết ngày 31 tháng 12 năm 2025. Cần lưu ý rằng hệ thống được thiết kế hoàn toàn cho mục đích phân tích, mô tả trực quan dữ liệu khí hậu lịch sử và không tích hợp các mô hình dự báo thời tiết ngắn hạn hoặc trung hạn trong tương lai.
 
 \section{Đóng góp chính}
-Tóm tắt đóng góp về dữ liệu, dashboard, insight và cơ chế tích hợp AI minh bạch.
-
-\section{Cấu trúc báo cáo}
-Giới thiệu ngắn nội dung của các chương tiếp theo.
+Đóng góp chính của nghiên cứu này nằm ở việc phát triển một giải pháp trực quan hóa khí hậu Việt Nam toàn diện, kết hợp chặt chẽ giữa kỹ thuật xử lý dữ liệu và công nghệ giao diện tương tác. Nghiên cứu đã xây dựng một bộ dữ liệu khí hậu lịch sử đồng bộ, sạch và đáng tin cậy bao gồm hơn 61.000 bản ghi của 28 trạm đo. Đồng thời, nhóm phát triển một dashboard tương tác cao cấp sử dụng thư viện kết xuất đồ họa ECharts để hiển thị bản đồ phân bố trạm đo địa lý và các xu hướng tương quan đa biến. Cuối cùng, việc tích hợp module trợ lý AI hoạt động minh bạch dưới cơ chế giám sát thủ công đảm bảo khả năng truy xuất dữ liệu hiệu năng cao và an toàn bảo mật tuyệt đối trên nền tảng DuckDB cục bộ.

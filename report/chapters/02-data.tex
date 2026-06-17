@@ -1,39 +1,56 @@
-\chapter{Dữ liệu}
+\chapter{Kiến trúc và Bản đồ Dữ liệu Khí hậu}
 
 \section{Nguồn dữ liệu và độ tin cậy}
-\begin{longtable}{p{0.18\textwidth}p{0.26\textwidth}p{0.16\textwidth}p{0.28\textwidth}}
-\toprule
-\textbf{Nguồn} & \textbf{Đơn vị cung cấp/URL} & \textbf{Ngày truy cập} & \textbf{Lý do tin cậy và giấy phép} \\
-\midrule
-\textit{Nguồn 1} & \textit{Đơn vị và liên kết} & \textit{Ngày} & \textit{Mô tả} \\
-\textit{Nguồn 2} & \textit{Đơn vị và liên kết} & \textit{Ngày} & \textit{Mô tả} \\
-\bottomrule
-\end{longtable}
+Nguồn dữ liệu chính cho đồ án được khai thác từ API Khí hậu Lịch sử của Open-Meteo. Đây là nguồn dữ liệu thời tiết phi thương mại có uy tín cao, sử dụng các mô hình tái phân tích (reanalysis) toàn cầu lớn như ERA5 của Trung tâm Dự báo Thời tiết Trung hạn Châu Âu (ECMWF) kết hợp với các quan sát trạm đo khí tượng mặt đất.
 
-\section{Mô tả bộ dữ liệu}
-Nêu đơn vị quan sát, số dòng, số cột, phạm vi thời gian, phạm vi địa lý và định dạng.
-Xác nhận bộ dữ liệu có tối thiểu 2.000 dòng và 7 biến độc lập.
-
-\section{Data dictionary}
-Trình bày các biến quan trọng tại \cref{app:data-dictionary}; phân biệt biến gốc,
-biến dẫn xuất, biến định lượng và định tính.
-
-\section{Thu thập và tái tạo dữ liệu}
-Mô tả cách tải dữ liệu, tham số, phiên bản, cấu trúc thư mục và lệnh chạy pipeline.
-Nêu cách bảo đảm người khác có thể tái tạo bộ dữ liệu phân tích.
-
-\section{Làm sạch và biến đổi}
+\noindent Chi tiết về nguồn dữ liệu và độ tin cậy:
 \begin{itemize}
-    \item Chuẩn hóa kiểu dữ liệu, tên biến, đơn vị và địa danh Việt Nam.
-    \item Xử lý giá trị thiếu, ngoại lệ và bản ghi trùng lặp.
-    \item Kết hợp các nguồn và tạo biến dẫn xuất.
-    \item Bảo toàn dữ liệu gốc và lưu dấu vết xử lý.
+    \item \textbf{Tên nguồn API:} Open-Meteo Historical API.
+    \item \textbf{Đường dẫn truy cập API:} \url{https://open-meteo.com/}.
+    \item \textbf{Giấy phép và độ tin cậy:} Miễn phí cho mục đích phi thương mại theo giấy phép Creative Commons Attribution 4.0 International (CC BY 4.0). Dữ liệu sử dụng kết quả từ mô hình tái phân tích khí tượng ERA5 có độ tin cậy cao, kết hợp mô hình khí hậu toàn cầu và quan trắc vệ tinh.
+    \item \textbf{Nguồn dẫn đến dữ liệu (CSV):} Bộ dữ liệu khí hậu lịch sử sau khi được thu thập và tổng hợp đã được lưu trữ tại \href{https://drive.google.com/drive/folders/your-google-drive-folder-url-placeholder}{Thư mục lưu trữ dữ liệu CSV của dự án}.
 \end{itemize}
 
+\section{Mô tả bộ dữ liệu}
+Bộ dữ liệu khí hậu tổng hợp cuối cùng được lưu trữ cục bộ dưới định dạng cột nén Parquet. Mỗi dòng trong bảng đại diện cho một quan sát chỉ số thời tiết tổng hợp của một địa điểm cụ thể trong một ngày. Tổng thể bộ dữ liệu bao gồm 61.376 dòng, là kết quả tích lũy từ 28 trạm đo trong sáu năm liên tục từ ngày 01 tháng 01 năm 2020 đến ngày 31 tháng 12 năm 2025, tính cả hai ngày nhuận. Bộ dữ liệu chứa 12 biến số chính, phân chia thành 5 biến định danh địa lý và 7 biến đo lường thời tiết liên tục.
+
+\section{Từ điển dữ liệu}
+Từ điển dữ liệu (Data Dictionary) đóng vai trò là một tài liệu kỹ thuật tập trung nhằm định nghĩa chi tiết cấu trúc, kiểu dữ liệu, nguồn gốc và ý nghĩa vật lý của các biến số trong cơ sở dữ liệu. Trong nghiên cứu này, từ điển dữ liệu được sử dụng để:
+\begin{itemize}
+    \item \textbf{Chuẩn hóa cấu trúc dữ liệu (Schema Standardization):} Đảm bảo các thành phần trong hệ thống (Backend, Frontend và Pipeline dữ liệu) thống nhất chính xác về kiểu dữ liệu và tên gọi của từng trường dữ liệu.
+    \item \textbf{Cung cấp thông tin ngữ nghĩa (Semantic Information):} Làm rõ ý nghĩa vật lý và các đơn vị đo lường tương ứng (như độ C, milimét, kilômét trên giờ, megajoule trên mét vuông) của từng thông số thời tiết.
+    \item \textbf{Cung cấp ngữ cảnh cho trợ lý trí tuệ nhân tạo (AI Analyst Context):} Trở thành thông tin đầu vào thiết yếu để trợ lý LLM hiểu được lược đồ cơ sở dữ liệu (Database Schema), từ đó tự động biên dịch các câu lệnh ngôn ngữ tự nhiên thành các truy vấn SQL an toàn và chính xác.
+\end{itemize}
+
+Dưới đây là bảng từ điển mô tả chi tiết cấu trúc và miền giá trị của các cột dữ liệu khí hậu trong tệp \texttt{climate\_daily.parquet}:
+
+\begin{longtable}{|p{0.25\textwidth}|p{0.12\textwidth}|p{0.07\textwidth}|p{0.12\textwidth}|p{0.26\textwidth}|}
+\hline
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Đơn vị} & \textbf{Nguồn gốc} & \textbf{Miền giá trị và ý nghĩa} \\ \hline
+\endhead
+\texttt{date} & Date & ngày & Độc lập & $[2020-01-01, 2025-12-31]$. Ngày ghi nhận thời tiết. \\ \hline
+\texttt{location} & Varchar & - & Độc lập & 28 địa điểm trạm đo của Việt Nam. \\ \hline
+\texttt{region} & Varchar & - & Dẫn xuất & $\text{North, Central, South}$ (Miền hành chính). \\ \hline
+\texttt{latitude} & Double & độ & Cấu hình & $[9.18, 22.82]$. Vĩ độ địa lý trạm quan trắc. \\ \hline
+\texttt{longitude} & Double & độ & Cấu hình & $[103.01, 109.22]$. Kinh độ địa lý trạm quan trắc. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_max} & Double & $^\circ$C & Open-Meteo & $[14.5, 41.8]$. Nhiệt độ không khí cao nhất ngày. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_min} & Double & $^\circ$C & Open-Meteo & $[4.5, 33.6]$. Nhiệt độ không khí thấp nhất ngày. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_mean} & Double & $^\circ$C & Open-Meteo & $[8.6, 35.3]$. Nhiệt độ không khí trung bình ngày. \\ \hline
+\texttt{precipitation\_}\newline\texttt{sum} & Double & mm & Open-Meteo & $[0.0, 267.5]$. Tổng lượng mưa ngày (bao gồm cả mưa rào và tuyết). \\ \hline
+\texttt{rain\_sum} & Double & mm & Open-Meteo & $[0.0, 267.5]$. Tổng lượng mưa rào ngày. \\ \hline
+\texttt{wind\_speed\_}\newline\texttt{10m\_max} & Double & km/h & Open-Meteo & $[2.9, 72.4]$. Tốc độ gió thổi mạnh nhất trong ngày. \\ \hline
+\texttt{shortwave\_}\newline\texttt{radiation\_sum} & Double & MJ/m² & Open-Meteo & $[0.0, 28.5]$. Tổng bức xạ sóng ngắn mặt trời chiếu xuống mặt đất. \\ \hline
+\end{longtable}
+
+\section{Thu thập và tái tạo dữ liệu}
+Nhóm đã xây dựng quy trình thu thập dữ liệu tự động từ API khí tượng. Quy trình bắt đầu bằng việc xác định danh sách tọa độ địa lý của 28 trạm khí hậu trọng điểm trên cả nước. Đối với mỗi trạm, hệ thống thực hiện gửi các truy vấn trực tuyến đến dịch vụ API của Open-Meteo để tải xuống dữ liệu lịch sử chi tiết theo từng ngày. Để đảm bảo tính ổn định và tránh bị chặn do tần suất truy cập vượt quá giới hạn cho phép (HTTP 429), hệ thống tích hợp cơ chế tự động theo dõi mã phản hồi từ máy chủ và dừng chờ khoảng cách thích hợp giữa các lượt gửi yêu cầu. Dữ liệu sau khi tải về được lưu trữ tạm thời dưới dạng tệp tin trung gian để chuẩn bị cho các bước xử lý tiếp theo.
+
+\section{Làm sạch và biến đổi}
+Dữ liệu thô sau khi thu thập được đưa qua bộ tiền xử lý và làm sạch để chuẩn hóa cấu trúc. Các thông số thời tiết thô được chuyển đổi thành cấu trúc bảng phẳng, đồng thời thực hiện liên kết dữ liệu khí tượng với phân vùng miền địa lý (Bắc, Trung, Nam) của Việt Nam. Hệ thống cũng thực hiện chuẩn hóa định dạng thời gian và chuyển đổi các trường dữ liệu số về đúng định dạng số học cần thiết. Bộ dữ liệu sạch cuối cùng được lưu trữ dưới định dạng nén cột hiệu năng cao (Parquet) nhằm tối ưu hóa dung lượng lưu trữ cục bộ và nâng cao tốc độ truy vấn phục vụ cho ứng dụng giao diện.
+
 \section{Đánh giá chất lượng dữ liệu}
-Trình bày tỷ lệ thiếu, trùng lặp, ngoại lệ, kiểm tra miền giá trị và các giới hạn.
-Giải thích tác động của chất lượng dữ liệu lên kết luận.
+Kết quả kiểm tra chất lượng dữ liệu bằng công cụ xác thực cho thấy bộ dữ liệu đạt độ tin cậy rất cao. Tỷ lệ khuyết thiếu dữ liệu ghi nhận ở mức tuyệt đối 0.00\% trên tất cả các cột cốt lõi nhờ việc cấu hình khoảng thời gian tải dữ liệu có đầy đủ dữ liệu tái phân tích. Tỷ lệ trùng lặp cũng đạt mức 0.00\%, đảm bảo mỗi cặp khóa địa điểm và ngày quan trắc xuất hiện duy nhất một lần. Kiểm tra miền giá trị hợp lệ xác nhận nhiệt độ dao động ổn định từ $4.5^\circ$C đến $41.8^\circ$C, lượng mưa nằm trong khoảng từ 0 đến 267.5 mm, và tốc độ gió cực đại từ 2.9 đến 72.4 km/h, hoàn toàn tương thích với thực tế khí hậu Việt Nam.
 
 \section{Đạo đức, quyền riêng tư và hạn chế}
-Nêu giấy phép, quyền riêng tư, thiên lệch dữ liệu và các trường hợp không nên diễn
-giải quá mức.
+Về mặt đạo đức và quyền riêng tư, dữ liệu được khai thác hoàn toàn là các thông số môi trường vĩ mô và vị trí địa lý công cộng, không chứa bất kỳ thông tin nhạy cảm của cá nhân hay doanh nghiệp nào. Tuy nhiên, bộ dữ liệu tồn tại hạn chế nhất định khi dữ liệu từ Open-Meteo là dữ liệu tái phân tích dạng lưới, kết hợp mô hình hóa số trị và quan sát vệ tinh. Do đó, các thông số cực đoan ở quy mô vi khí hậu cục bộ tại các địa hình đặc thù như đỉnh núi cao hay thung lũng sâu có thể bị san phẳng hoặc hơi khác biệt so với số liệu đo đạc trực tiếp tại các trạm khí tượng thủy văn mặt đất của Việt Nam. Giới hạn diễn giải này cần được lưu ý khi sử dụng dữ liệu cho các phân tích chi tiết.
+

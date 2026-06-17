@@ -1,58 +1,49 @@
-\chapter{Tích hợp AI}
+\chapter{Tích hợp Trí tuệ Nhân tạo và An toàn Hệ thống}
 
 \section{Mục tiêu và phạm vi AI}
-Nêu các tác vụ AI hỗ trợ, tác vụ không được phép thực hiện và giá trị AI mang lại so
-với dashboard cố định.
+Module AI trong dự án đóng vai trò là một trợ lý phân tích dữ liệu chuyên sâu (AI Analyst), hỗ trợ người dùng khám phá các mối liên hệ hoặc trích xuất số liệu từ tệp dữ liệu khí hậu nằm ngoài các tính năng tĩnh của dashboard. Tác vụ AI chỉ được giới hạn ở việc sinh mã truy vấn SQL đọc dữ liệu dựa trên câu hỏi của người dùng và giải thích ý nghĩa câu lệnh, không được phép can thiệp vào mã nguồn backend hoặc chỉnh sửa dữ liệu gốc.
 
 \section{Nguyên tắc không thực thi ngầm}
-Khẳng định AI không tự thay đổi dữ liệu gốc hoặc âm thầm chạy thuật toán. Mọi code
-phải được hiển thị, giải thích, chờ người dùng chỉnh sửa/phê duyệt và chỉ chạy local
-sau khi được chấp nhận.
+Dự án tuân thủ nghiêm ngặt nguyên tắc minh bạch dữ liệu và duy trì sự kiểm soát của con người (Human-in-the-loop) đối với mọi hoạt động của hệ thống. Theo đó, mô hình trí tuệ nhân tạo không bao giờ được phép tự động hoặc âm thầm thực thi bất kỳ truy vấn SQL nào trực tiếp vào cơ sở dữ liệu. Mọi mã nguồn SQL do AI khởi tạo đều bắt buộc phải hiển thị một cách tường minh và trực quan trên giao diện người dùng ở trạng thái chờ duyệt. Hơn nữa, người dùng hoàn toàn có quyền can thiệp, chỉnh sửa cấu trúc hoặc nội dung cú pháp SQL này ngay trong trình biên soạn văn bản trước khi đưa ra quyết định thực thi. Hệ thống chỉ chính thức chạy truy vấn trên nền DuckDB sau khi nhận được lệnh xác nhận phê duyệt một cách chủ động từ phía người dùng qua hành động nhấn nút kích hoạt trên giao diện.
 
-\section{Luồng người dùng phê duyệt}
-\begin{enumerate}
-    \item Người dùng nhập yêu cầu phân tích.
-    \item API AI nhận yêu cầu và ngữ cảnh cấu trúc dữ liệu.
-    \item AI trả về code cùng giải thích bằng ngôn ngữ tự nhiên.
-    \item Giao diện hiển thị trạng thái ``Chờ phê duyệt'' và cho phép chỉnh sửa.
-    \item Người dùng chấp nhận hoặc từ chối; có thể xác nhận các bước rủi ro.
-    \item API thực thi chỉ chạy code đã duyệt trên môi trường local.
-    \item Kết quả, biểu đồ và logs được trả về giao diện.
-\end{enumerate}
+\section{Luồng phê duyệt của người dùng}
+Quy trình thực thi truy vấn an toàn được thiết kế thông qua các bước phối hợp chặt chẽ giữa frontend và backend. Ban đầu, người dùng nhập câu hỏi bằng ngôn ngữ tự nhiên tại giao diện trợ lý AI, chẳng hạn như yêu cầu so sánh nền nhiệt độ cực đại giữa Sa Pa và Đà Lạt. Sau đó, giao diện gửi yêu cầu này tới API backend, truyền kèm ngữ cảnh cấu trúc bảng dữ liệu để dịch thành mã SQL thô. Khi nhận được kết quả dịch kèm giải thích logic từ AI Service, frontend sẽ hiển thị đề xuất này dưới dạng bản nháp tạm thời (DRAFT). Tại đây, người dùng tiến hành rà soát cấu trúc cú pháp câu lệnh, thực hiện các hiệu chỉnh cần thiết và quyết định nhấn nút duyệt chạy. Lúc này, hệ thống kích hoạt module kiểm soát an toàn để xác thực tính hợp lệ của câu lệnh, nếu vượt qua kiểm tra, DuckDB sẽ thực thi trực tiếp trên tệp Parquet cục bộ và trả kết quả dạng bảng hiển thị lên màn hình. Cuối cùng, toàn bộ quá trình tương tác sẽ được tự động ghi nhận vào cơ sở dữ liệu nhật ký kiểm toán.
 
 \section{Thiết kế API}
+Trách nhiệm giữa các API được phân định rõ ràng nhằm đảm bảo tính bảo mật và độc lập:
 \begin{table}[H]
 \centering
-\begin{tabularx}{\textwidth}{lX}
-\toprule
-\textbf{API} & \textbf{Trách nhiệm} \\
-\midrule
-API AI & Nhận yêu cầu/ngữ cảnh; trả về code và giải thích; không thực thi code. \\
-API thực thi & Nhận code đã chỉnh sửa/phê duyệt; kiểm tra an toàn; chạy local; trả kết quả và logs. \\
-API logs & Lưu yêu cầu, code, quyết định phê duyệt, kết quả phân tích và giải thích. \\
-\bottomrule
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|p{0.35\textwidth}|X|}
+\hline
+\textbf{API Endpoint} & \textbf{Trách nhiệm chi tiết} \\ \hline
+\texttt{POST /api/ai/}\newline\texttt{proposals} & Tiếp nhận câu hỏi, gọi LLM dịch thành mã SQL nháp và lời giải thích. Chưa thực thi SQL. Trạng thái lưu: \texttt{draft}. \\ \hline
+\texttt{POST /api/ai/}\newline\texttt{proposals/\{id\}/}\newline\texttt{approve} & Tiếp nhận mã SQL người dùng gửi lên sau khi duyệt/chỉnh sửa. Chạy bộ kiểm tra an toàn và lưu trạng thái \texttt{approved}. \\ \hline
+\texttt{POST /api/ai/}\newline\texttt{proposals/\{id\}/}\newline\texttt{execute} & Chỉ cho phép chạy nếu đề xuất có trạng thái \texttt{approved}. Kết nối DuckDB thực thi SQL cục bộ, trả kết quả và lưu trạng thái \texttt{executed}. \\ \hline
 \end{tabularx}
-\caption{Phân tách trách nhiệm giữa các API}
+\caption{Phân tách trách nhiệm giữa các API AI}
 \end{table}
 
-\section{Hiển thị code và giải thích}
-Chèn ảnh giao diện minh chứng code được hiển thị rõ ràng. Trình bày một ví dụ giải
-thích gắn trực tiếp với đoạn code, gồm mục đích và tác động dự kiến lên dữ liệu.
+\section{Hiển thị code và giải thích trên giao diện}
+Giao diện người dùng được thiết kế để hiển thị đồng thời mã SQL đề xuất trong một khung biên soạn mã và một khung văn bản giải thích logic truy vấn:
 
-\section{Kiểm soát an toàn}
-Mô tả allowlist/denylist, parser hoặc validator, giới hạn thời gian/tài nguyên, môi
-trường chỉ đọc, xử lý lỗi và cách bảo vệ dữ liệu gốc.
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox[c][6.5cm][c]{0.85\textwidth}{\centering
+    \textbf{KHOẢNG TRỐNG CHÈN ẢNH GIAO DIỆN AI ANALYST PORTAL}\\
+    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_ai\_analyst.png}\\
+    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_ai\_analyst.png}\\
+    \textit{Mô tả:} Chụp ảnh tab AI Analyst Portal đang hiển thị một đề xuất dịch SQL, ô textarea chứa mã SQL chờ duyệt và nút bấm màu xanh lá cây "Phê duyệt \& Chạy local".}}
+    \caption{Giao diện quản lý đề xuất và phê duyệt thực thi câu lệnh SQL của AI}
+    \label{fig:dashboard-ai-analyst}
+\end{figure}
 
-\section{Lưu trữ và khả năng kiểm toán}
-Mô tả schema logs và cách truy lại toàn bộ phiên phân tích. Đưa log mẫu vào
-\cref{app:ai-logs}.
+\section{Kiểm soát an toàn truy vấn (Guardrails)}
+Để bảo vệ an toàn cho cơ sở dữ liệu cục bộ, hệ thống được trang bị bộ lọc an toàn chuyên biệt để thực hiện xác thực nghiêm ngặt mã lệnh SQL trước khi chuyển giao cho động cơ truy vấn. Quy trình kiểm soát này được xây dựng trên ba lớp phòng ngự chính. Đầu tiên là cơ chế kiểm tra đặc quyền chỉ đọc, sử dụng thuật toán phân tích cú pháp để bắt buộc mọi câu lệnh gửi lên phải bắt đầu bằng các từ khóa truy xuất dữ liệu an toàn. Lớp phòng ngự thứ hai là danh sách cấm, ngăn chặn triệt để các câu lệnh có khả năng làm thay đổi tính toàn vẹn của dữ liệu hoặc phá hủy cấu trúc bảng. Cuối cùng, hệ thống thực hiện cơ chế chặn đa lệnh bằng cách chỉ cho phép thực thi duy nhất một truy vấn đơn lẻ trong mỗi phiên tương tác, loại trừ hoàn toàn nguy cơ chèn nhiều câu lệnh liên tiếp phân tách bằng ký tự đặc biệt.
 
-\section{Đánh giá module AI}
-Chuẩn bị một tập câu hỏi phân tích chuẩn và câu hỏi ngoài dự kiến. Đánh giá độ đúng,
-tính linh hoạt, khả năng giải thích, độ an toàn và hạn chế.
+\section{Lưu trữ và khả năng kiểm toán (Audit Log)}
+Toàn bộ nhật ký hoạt động của trợ lý trí tuệ nhân tạo được tự động ghi nhận vào cơ sở dữ liệu nhật ký kiểm toán chuyên dụng của hệ thống. Cơ chế ghi nhật ký được thiết kế để lưu giữ toàn diện các thông tin phục vụ mục đích giám sát hoạt động. Các thuộc tính lưu trữ bao gồm khóa định danh phiên tương tác duy nhất, nhãn thời gian thực thi, và nội dung câu hỏi ban đầu của người dùng. Ngoài ra, hệ thống cũng lưu trữ song song mã truy vấn do AI đề xuất ban đầu và mã truy vấn thực tế được người dùng phê duyệt chạy, cùng với trạng thái kết quả thực thi và thông tin chi tiết lỗi hệ thống trong trường hợp truy vấn gặp sự cố. Điều này đảm bảo tính minh bạch và cho phép quản trị viên dễ dàng rà soát hành vi của AI.
 
-\section{Quá trình sử dụng AI trong dự án}
-Tóm tắt các yêu cầu đã đặt ra cho AI, kết quả nhận được, thay đổi do con người thực
-hiện và nhận xét về chất lượng hỗ trợ. Phân biệt rõ nội dung AI đề xuất với quyết
-định cuối cùng của nhóm.
+\section{Đánh giá chất lượng và Quá trình sử dụng}
+Quá trình đánh giá thực nghiệm thông qua tập câu hỏi kiểm thử đa dạng cho thấy trợ lý AI hoạt động ổn định và chính xác. Các tác vụ phức tạp như so sánh lượng mưa giữa các khu vực địa lý, lọc nhiệt độ bất thường cục bộ hay tính toán hệ số tương quan đa biến đều được mô hình chuyển đổi thành mã SQL tối ưu cho DuckDB với thời gian xử lý cực ngắn. Hơn nữa, việc duy trì vai trò chủ động của con người giúp đảm bảo tính linh hoạt tối đa cho hệ thống. Trong trường hợp mô hình sinh ra câu lệnh có tên cột chưa khớp hoàn toàn hoặc bộ lọc chưa thực sự tối ưu, người dùng có thể chủ động sửa đổi trực tiếp trên giao diện để hoàn thiện câu lệnh trước khi thực thi, tạo nên cơ chế cộng tác hiệu quả giữa người dùng và trí tuệ nhân tạo.
 

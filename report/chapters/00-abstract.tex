@@ -1,9 +1,11 @@
 \chapter*{Tóm tắt}
 \addcontentsline{toc}{chapter}{Tóm tắt}
 
-\textit{Viết khoảng 200--300 từ, trình bày bối cảnh Việt Nam, vấn đề cần giải quyết,
-dữ liệu, phương pháp trực quan hóa, cách tích hợp AI, các kết quả nổi bật và đóng góp
-chính của dự án. Không đưa thông tin chưa được chứng minh bởi dữ liệu.}
+Đồ án xây dựng ứng dụng \textbf{Vietnam Climate Pulse} nhằm giải quyết bài toán phân tích trực quan khí hậu và phát hiện thời tiết cực đoan tại Việt Nam giai đoạn 2020-2025. Sử dụng dữ liệu khí tượng lịch sử độ phân giải cao của 28 trạm quan trắc từ API Open-Meteo, nhóm nghiên cứu đã xây dựng thành công bộ dữ liệu sạch gồm 61.376 dòng dẹt không có giá trị khuyết. 
 
-\noindent\textbf{Từ khóa:} [từ khóa 1], [từ khóa 2], trực quan hóa dữ liệu, phân tích dữ liệu, AI.
+Ứng dụng được thiết kế theo mô hình cục bộ tối giản (local-first) sử dụng FastAPI và DuckDB, giúp truy vấn tệp Parquet trực tiếp với tốc độ phản hồi cực nhanh dưới 5 ms mà không cần thiết lập hệ quản trị cơ sở dữ liệu cồng kềnh. Giao diện frontend tương tác sử dụng React + TypeScript + ECharts mang phong cách Dark Mode và Glassmorphism cao cấp, trực quan hóa mạng lưới trạm đo Việt Nam, xu hướng mùa vụ, biểu đồ phân tán tương quan đa biến và ma trận hệ số tương quan Pearson. Đặc biệt, ứng dụng tích hợp thành công module AI Analyst hoạt động minh bạch dưới sự kiểm soát của con người (Human-in-the-loop) và bộ lọc an toàn SQL bảo vệ dữ liệu thô. 
 
+Kết quả phân tích đã trích xuất được 3 insight lớn về đặc trưng nhiệt độ miền, các đợt nắng nóng cực đại kỷ lục cuối tháng 4 năm 2024 tại Lào Cai ($41.8^\circ$C) và lượng mưa kỷ lục năm 2020 tại Vinh (267.5 mm). Bộ kiểm thử tự động ghi nhận đạt 100% Passed (11/11 tests), chứng minh hệ thống vận hành an toàn và tin cậy. Đồ án là một sản phẩm thực nghiệm hoàn chỉnh, có đóng góp thiết thực cho cộng đồng tuyên truyền môi trường và học tập địa lý khí hậu Việt Nam.
+
+\vspace{0.5cm}
+\noindent\textbf{Từ khóa:} Khí hậu Việt Nam, Thời tiết cực đoan, Trực quan hóa dữ liệu, DuckDB, AI Analyst, Human-in-the-loop.

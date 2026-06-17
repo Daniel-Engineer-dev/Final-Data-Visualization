@@ -25,6 +25,7 @@
 \usepackage{setspace}
 \usepackage{titlesec}
 \usepackage{csquotes}
+\DeclareQuoteAlias{english}{vietnamese}
 \usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
 
 \addbibresource{references.bib}
@@ -54,7 +55,7 @@
 \setlist[itemize]{label=\textcolor{subsectionblue}{\textbullet}}
 
 \titleformat{\chapter}[display]
-  {\bfseries\color{chapterblue}\centering}
+  {\bfseries\color{chapterblue}\raggedright}
   {\Large CHƯƠNG \thechapter}
   {0.4em}
   {\LARGE}
@@ -81,7 +82,7 @@
     labelfont={bf,color=sectionblue},
     textfont={color=chapterblue}
 }
-\arrayrulecolor{sectionblue}
+\arrayrulecolor{black}
 
 \pagestyle{fancy}
 \setlength{\headheight}{26pt}
@@ -114,9 +115,9 @@
 \newcommand{\CourseName}{Trực quan hóa dữ liệu}
 \newcommand{\ProjectTitle}{Vietnam Climate Pulse: Khám phá Khí hậu và Thời tiết Cực đoan Việt Nam}
 \newcommand{\ProjectShortTitle}{Vietnam Climate Pulse}
-\newcommand{\TeamName}{Nhóm 4}
-\newcommand{\TeamMembers}{Trần Trí Đức -- 22120000; Nguyễn Quốc Việt -- 22120001}
-\newcommand{\InstructorName}{Thầy Nguyễn Huy Khánh}
+\newcommand{\TeamName}{Nhóm 1}
+\newcommand{\TeamMembers}{Lê Lâm Trí Đức -- 23120237, Hoàng Quốc Việt -- 23120189, Nguyễn Lê Thế Vinh -- 23120190, Phạm Quang Vinh -- 23120202}
+\newcommand{\InstructorName}{Bùi Tiến Lên}
 \newcommand{\ReportDate}{tháng 06, năm 2026}
 % ===============================================================
 
@@ -126,6 +127,7 @@
 \input{coverpage}
 \input{chapters/00-declaration}
 \input{chapters/00-abstract}
+\input{chapters/00-contributions}
 
 \pagenumbering{roman}
 \tableofcontents
@@ -141,13 +143,10 @@
 \input{chapters/05-analysis}
 \input{chapters/06-ai-integration}
 \input{chapters/07-evaluation}
-\input{chapters/08-conclusion}
+\input{chapters/08-ai-logs}
+\input{chapters/09-conclusion}
 
+\nocite{*}
 \printbibliography[heading=bibintoc,title={Tài liệu tham khảo}]
-
-\appendix
-\input{appendices/appendix-a-data-dictionary}
-\input{appendices/appendix-b-ai-logs}
-\input{appendices/appendix-c-contributions}
 
 \end{document}

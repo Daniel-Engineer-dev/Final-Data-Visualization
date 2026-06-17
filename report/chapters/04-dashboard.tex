@@ -1,27 +1,54 @@
-\chapter{Dashboard và tương tác}
+\chapter{Thiết kế Giao diện và Trải nghiệm Tương tác}
 
 \section{Tổng quan giao diện}
-Chèn ảnh toàn bộ dashboard, mô tả các trang và vai trò của từng trang.
+Dashboard ứng dụng được thiết kế trên một giao diện thống nhất theo phong cách Dark Mode hiện đại, sử dụng các thẻ khối bán trong suốt (glassmorphism) giúp tăng chiều sâu thị giác và tạo cảm giác premium. Thanh sidebar bên trái cố định dùng để điều hướng giữa năm phân hệ chức năng chính bao gồm Tổng quan trạm đo phục vụ hiển thị bản đồ toàn quốc và chỉ số chi tiết trạm, Khám phá khí hậu thể hiện xu hướng nhiệt độ và ma trận nhiệt độ mùa vụ, Thời tiết cực đoan cung cấp thống kê ngày vượt ngưỡng thiên tai, Tương quan khí hậu biểu diễn hệ số Pearson đa biến, và cuối cùng là phân hệ AI Analyst Portal hỗ trợ phân tích ngôn ngữ tự nhiên.
 
 \begin{figure}[H]
     \centering
-    \fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering
-    Chèn ảnh dashboard tổng quan tại đây}}
-    \caption{Giao diện tổng quan của dashboard}
+    \fbox{\parbox[c][7cm][c]{0.85\textwidth}{\centering
+    \textbf{KHOẢNG TRỐNG CHÈN ẢNH GIAO DIỆN TỔNG QUAN DASHBOARD}\\
+    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_overview.png}\\
+    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_overview.png}\\
+    \textit{Mô tả:} Chụp ảnh giao diện chính lúc đang hiển thị tab Tổng quan, có đầy đủ bản đồ trạm đo và các thẻ KPI phía trên.}}
+    \caption{Giao diện tổng quan của dashboard Vietnam Climate Pulse}
     \label{fig:dashboard-overview}
 \end{figure}
 
-\section{Các biểu đồ chính}
-Mỗi biểu đồ cần có hình ảnh, câu hỏi phân tích, lý do thiết kế và thông điệp chính.
+\section{Các biểu đồ chính và chức năng}
+Mỗi phân hệ giao diện tập trung giải quyết các bài toán trực quan hóa chuyên sâu:
 
-\section{Liên kết giữa các biểu đồ}
-Mô tả cross-filter, highlight, drill-down, tooltip và cách một thao tác cập nhật các
-thành phần khác.
+\subsection{Phân hệ Khám phá Khí hậu (Explorer)}
+Trang này được thiết kế để phân tích các yếu tố chu kỳ và xu hướng thời gian của từng địa phương:
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering
+    \textbf{KHOẢNG TRỐNG CHÈN ẢNH PHÂN HỆ KHÁM PHÁ KHÍ HẬU}\\
+    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_explorer.png}\\
+    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_explorer.png}\\
+    \textit{Mô tả:} Chụp ảnh giao diện tab Khám phá khí hậu, thể hiện biểu đồ đường nhiệt độ tối đa/trung bình/tối thiểu và biểu đồ heatmap tháng x năm.}}
+    \caption{Giao diện phân hệ khám phá khí hậu và xu hướng mùa vụ}
+    \label{fig:dashboard-explorer}
+\end{figure}
+
+\subsection{Phân hệ Thời tiết Cực đoan (Extreme Events)}
+Trang này hỗ trợ lọc động và khoanh vùng các địa điểm thường xuyên xuất hiện các đợt nắng nóng hoặc mưa bão lịch sử:
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering
+    \textbf{KHOẢNG TRỐNG CHÈN ẢNH PHÂN HỆ THỜI TIẾT CỰC ĐOAN}\\
+    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_extreme.png}\\
+    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_extreme.png}\\
+    \textit{Mô tả:} Chụp ảnh giao diện tab Thời tiết cực đoan, bao gồm hai thanh trượt điều chỉnh ngưỡng nhiệt độ/lượng mưa và bảng nhật ký các ngày cực đoan bên dưới.}}
+    \caption{Giao diện phân hệ thống kê và hiển thị nhật ký thời tiết cực đoan}
+    \label{fig:dashboard-extreme}
+\end{figure}
+
+\section{Liên kết tương tác giữa các biểu đồ}
+Ứng dụng thiết lập cơ chế liên kết tương tác chặt chẽ giữa các thành phần trực quan nhằm tối ưu hóa khả năng khám phá thông tin. Cụ thể, hệ thống tích hợp tính năng click chọn trên bản đồ địa lý, theo đó khi người dùng nhấp chuột vào một chấm tròn đại diện cho trạm đo trên bản đồ, hệ thống sẽ tự động bắt sự kiện và cập nhật tức thì dữ liệu của bảng thông tin chi tiết địa phương thông qua đồng bộ trạng thái trong React. Thêm vào đó, tính năng đồng bộ tooltip theo trục chung được cấu hình cho các biểu đồ đường và cột trong phân hệ khám phá, hỗ trợ hiển thị đồng thời thông số của nhiều biến số khi người dùng rê chuột, tạo điều kiện thuận lợi cho việc đối chiếu nhanh giá trị tại cùng một thời điểm.
 
 \section{Bộ lọc và điều hướng}
-Giải thích bộ lọc, giá trị mặc định, trạng thái rỗng, cách đặt lại và cách hỗ trợ
-người dùng tránh thao tác sai.
+Để nâng cao tính cá nhân hóa trong việc khai thác dữ liệu, hệ thống cung cấp các bộ lọc và điều hướng tương tác động. Bộ chọn dropdown tại phân hệ Khám phá khí hậu cho phép người dùng lọc thông tin chi tiết của từng trạm đo cụ thể hoặc xem số liệu trung bình trên quy mô toàn quốc, tự động cập nhật đồng bộ các biểu đồ đường, biểu đồ cột và ma trận nhiệt độ tương ứng. Hơn nữa, các thanh trượt động được tích hợp trong bộ lọc ngưỡng thời tiết cực đoan, cho phép người dùng kéo trượt để thay đổi giá trị ngưỡng nhiệt độ hoặc lượng mưa, hệ thống sẽ tự động gửi tham số mới về API backend và tải lại danh sách các ngày thiên tai tương ứng.
 
-\section{Thiết kế thẩm mỹ và khả dụng}
-Phân tích bảng màu, phân cấp thị giác, khả năng đọc, responsive và khả năng tiếp cận.
+\section{Thiết kế thẩm mỹ và khả năng tiếp cận}
+Tính thẩm mỹ và khả năng tiếp cận của ứng dụng được chú trọng thiết kế nhằm mang lại trải nghiệm tối ưu cho nhiều đối tượng người dùng. Bảng màu của dashboard sử dụng các gam màu có ý nghĩa chỉ thị khí hậu trực quan, trong đó màu đỏ (\texttt{\#ff5b52}) tượng trưng cho nắng nóng cực đoan, màu xanh ngọc (\texttt{\#00bcd4}) đại diện cho mưa bão tích lũy, và màu xanh dương (\texttt{\#00d2ff}) phản ánh nền nhiệt độ thấp lạnh giá. Đồng thời, thiết kế đáp ứng (Responsive) được triển khai thông qua CSS Grid và Media Queries, tự động ẩn thanh điều hướng sidebar và chuyển đổi bố cục từ hai cột thành một cột dọc trên màn hình thiết bị di động và máy tính bảng, đảm bảo tính thân thiện và tối ưu hiển thị trên mọi loại thiết bị.
 

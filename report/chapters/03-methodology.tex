@@ -1,27 +1,17 @@
-\chapter{Phương pháp phân tích và thiết kế}
+\chapter{Phương pháp và Quy trình Kỹ thuật}
 
-\section{Quy trình phân tích}
-Trình bày quy trình từ câu hỏi, dữ liệu, biến đổi, phân tích, trực quan hóa đến kiểm
-chứng kết luận. Có thể thêm sơ đồ kiến trúc hoặc luồng dữ liệu.
+\section{Quy trình phân tích và Luồng dữ liệu}
+Quy trình phân tích dữ liệu trong dự án được triển khai qua các bước tuần tự từ đầu đến cuối. Khởi đầu bằng việc thu thập dữ liệu, hệ thống tự động hóa quá trình truy vấn thông tin khí hậu lịch sử từ dịch vụ API dựa trên danh sách các trạm đo đại diện tại Việt Nam. Tiếp theo, quá trình tiền xử lý và làm sạch sẽ chuyển đổi dữ liệu khí quyển thô thành cấu trúc bảng phẳng chuẩn hóa, bổ sung thông tin vùng miền địa lý, và tối ưu hóa định dạng lưu trữ nhằm tiết kiệm bộ nhớ. Đối với việc truy vấn dữ liệu, hệ thống thiết lập một cơ chế truy xuất cục bộ hiệu năng cao để đọc trực tiếp dữ liệu đã làm sạch mà không cần qua các hệ quản trị trung gian cồng kềnh. Backend chịu trách nhiệm tiếp nhận, định tuyến và tính toán các số liệu thống kê tổng hợp để cung cấp dữ liệu qua các điểm kết nối dịch vụ cho Frontend. Cuối cùng, ở bước trực quan hóa tương tác, ứng dụng phía máy khách tiếp nhận dữ liệu để kết xuất các biểu đồ và bản đồ địa lý sinh động, đồng thời quản lý luồng phê duyệt các truy vấn nâng cao từ module trợ lý trí tuệ nhân tạo.
 
 \section{Phương pháp phân tích}
-Mô tả các thống kê, phép tổng hợp, phương pháp phát hiện xu hướng, quan hệ giữa biến
-hoặc mô hình được sử dụng. Nêu giả định và lý do lựa chọn.
+Dự án áp dụng ba phương pháp phân tích dữ liệu chính để khai phá tri thức khí hậu Việt Nam. Phương pháp thứ nhất là thống kê mô tả và gom nhóm, sử dụng các hàm tổng hợp như tính giá trị trung bình, tối đa, tối thiểu và tổng của DuckDB để tính toán nhiệt độ trung bình, lượng mưa năm và biên độ nhiệt của từng trạm đo hoặc gom nhóm theo vùng miền và tháng trong năm nhằm tìm kiếm quy luật mùa vụ. Phương pháp thứ hai là lọc ngưỡng cực đoan nhằm tự động phát hiện các ngày thời tiết dị thường thông qua bộ lọc động dựa trên phép so sánh lớn hơn hoặc bằng các giá trị ngưỡng tùy chỉnh của nhiệt độ và lượng mưa. Phương pháp thứ ba là phân tích tương quan đa biến, thực hiện tính toán trực tiếp hệ số tương quan Pearson giữa các cặp biến số đo lường liên tục bằng hàm tương quan tích hợp của DuckDB để xác định mối liên hệ vật lý giữa nhiệt độ, lượng mưa, sức gió và bức xạ mặt trời.
 
-\section{Thiết kế trực quan}
-Với mỗi biểu đồ, giải thích:
-\begin{itemize}
-    \item Câu hỏi mà biểu đồ trả lời.
-    \item Lý do chọn loại biểu đồ và visual encoding.
-    \item Cách dùng màu sắc, nhãn, đơn vị và chú thích.
-    \item Cách tránh gây hiểu nhầm hoặc quá tải thông tin.
-\end{itemize}
+\section{Thiết kế trực quan và Mã hóa thị giác}
+Để tối ưu hóa trải nghiệm phân tích của người dùng, nhóm nghiên cứu đã chọn lọc kỹ lưỡng các kỹ thuật mã hóa thị giác tương thích với đặc thù dữ liệu. Đầu tiên, bản đồ phân bố trạm đo được xây dựng dưới dạng biểu đồ phân tán Scatter Plot bằng cách sử dụng vĩ độ làm trục tung và kinh độ làm trục hoành, phác họa hình dáng tự nhiên của lãnh thổ Việt Nam, trong đó kích thước điểm được mã hóa theo nhiệt độ trung bình và màu sắc phân biệt theo vùng miền. Tiếp theo, biểu đồ đường chuỗi thời gian dạng đường trơn được lựa chọn để thể hiện xu hướng nhiệt độ tối đa, tối thiểu và trung bình theo tháng, giúp trực quan hóa biên độ nhiệt và biến động theo mùa. Đối với lượng mưa, do đặc trưng tích lũy của chỉ số này, biểu đồ cột Bar Chart là phương án tối ưu để so sánh tổng lượng mưa giữa các tháng. Cuối cùng, ma trận Heatmap Tháng x Năm mã hóa nhiệt độ trung bình bằng các ô màu chuyển sắc từ xanh lạnh sang đỏ đậm, giúp phát hiện tức thì các chu kỳ mùa vụ và sự bất thường thời tiết qua các năm.
 
 \section{Storytelling và cấu trúc thông tin}
-Mô tả thứ tự khám phá từ tổng quan đến chi tiết, các insight cần nhấn mạnh và cách
-dashboard dẫn dắt người dùng.
+Cấu trúc thông tin của ứng dụng tuân thủ triết lý thiết kế thông tin nổi tiếng của Ben Shneiderman là xem tổng quan trước, lọc và phóng to, và hiển thị chi tiết khi có nhu cầu. Tại cấp độ thứ nhất về tổng quan quốc gia, người dùng được tiếp cận bản đồ phân bố toàn bộ các trạm đo và các chỉ số trung bình của cả nước. Cấp độ thứ hai cho phép lọc địa phương khi người dùng chọn một trạm đo cụ thể trên bản đồ để cập nhật bảng số liệu chi tiết của địa phương đó hoặc lọc theo trạm tại phân hệ khám phá xu hướng. Cấp độ thứ ba hướng tới khai thác tương quan nâng cao và tích hợp trí tuệ nhân tạo, cho phép người dùng chuyển sang phòng thí nghiệm tương quan hoặc tương tác trực tiếp với trợ lý AI để thực thi các truy vấn SQL sâu trên toàn bộ cơ sở dữ liệu.
 
-\section{Kiến trúc hệ thống}
-Trình bày frontend, backend, lớp dữ liệu, module AI, môi trường thực thi local và
-nhật ký. Nêu rõ ranh giới giữa API AI và API thực thi.
+\section{Kiến trúc hệ thống và Công nghệ lựa chọn}
+Hệ thống được thiết kế theo kiến trúc xử lý cục bộ (local-first) tinh gọn và bảo mật cao thông qua bốn tầng chức năng chính. Tầng lưu trữ sử dụng định dạng nén cột nhằm tối ưu dung lượng đĩa và tốc độ đọc/ghi dữ liệu. Tầng dịch vụ backend chịu trách nhiệm tính toán và thực thi các câu lệnh truy vấn dữ liệu trực tiếp trên tệp lưu trữ mà không cần triển khai hệ quản trị cơ sở dữ liệu máy chủ độc lập phức tạp. Tầng hỗ trợ trí tuệ nhân tạo tích hợp bộ dịch ngôn ngữ tự nhiên thành mã lệnh truy vấn dữ liệu, được trang bị module kiểm soát an toàn nghiêm ngặt để phát hiện và ngăn chặn các nguy cơ phá hủy dữ liệu, đồng thời tự động lưu lại nhật ký lịch sử tương tác. Cuối cùng, tầng giao diện frontend vận hành như một ứng dụng đơn trang tương tác cao, đảm nhận vai trò hiển thị trực quan các biểu đồ động và tiếp nhận các phản hồi điều khiển của người dùng.
 
