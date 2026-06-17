@@ -1,5 +1,5 @@
 project_proposal_document.md
-
+.agent/
 # Environment and secrets
 .env
 *.env.local
