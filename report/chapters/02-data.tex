@@ -1,26 +1,13 @@
 \chapter{Kiến trúc và Bản đồ Dữ liệu Khí hậu}
 
 \section{Nguồn dữ liệu và độ tin cậy}
-Nguồn dữ liệu chính cho đồ án được khai thác từ API Khí hậu Lịch sử của Open-Meteo. Đây là nguồn dữ liệu thời tiết phi thương mại có uy tín cao, sử dụng các mô hình tái phân tích (reanalysis) toàn cầu lớn như ERA5 của Trung tâm Dự báo Thời tiết Trung hạn Châu Âu (ECMWF) kết hợp với các quan sát trạm đo khí tượng mặt đất.
-
-\noindent Chi tiết về nguồn dữ liệu và độ tin cậy:
-\begin{itemize}
-    \item \textbf{Tên nguồn API:} Open-Meteo Historical API.
-    \item \textbf{Đường dẫn truy cập API:} \url{https://open-meteo.com/}.
-    \item \textbf{Giấy phép và độ tin cậy:} Miễn phí cho mục đích phi thương mại theo giấy phép Creative Commons Attribution 4.0 International (CC BY 4.0). Dữ liệu sử dụng kết quả từ mô hình tái phân tích khí tượng ERA5 có độ tin cậy cao, kết hợp mô hình khí hậu toàn cầu và quan trắc vệ tinh.
-    \item \textbf{Nguồn dẫn đến dữ liệu (CSV):} Bộ dữ liệu khí hậu lịch sử sau khi được thu thập và tổng hợp đã được lưu trữ tại \href{https://drive.google.com/drive/folders/your-google-drive-folder-url-placeholder}{Thư mục lưu trữ dữ liệu CSV của dự án}.
-\end{itemize}
+Nguồn dữ liệu chính phục vụ nghiên cứu được lấy từ Open-Meteo Historical Weather API tại địa chỉ \url{https://open-meteo.com/}. Dữ liệu này được cung cấp hoàn toàn miễn phí cho các mục đích phi thương mại theo điều khoản của giấy phép Creative Commons Attribution 4.0 International (CC BY 4.0). Về mặt kỹ thuật, Open-Meteo tích hợp dữ liệu từ mô hình tái phân tích khí tượng ERA5 do Trung tâm Dự báo Thời tiết Trung hạn Châu Âu (ECMWF) vận hành, kết hợp mô hình khí hậu toàn cầu và các nguồn quan trắc vệ tinh để đảm bảo độ tin cậy tối đa. Sau khi thu thập và tổng hợp, bộ dữ liệu gốc dưới dạng các tệp tin CSV được lưu trữ tập trung tại \href{https://drive.google.com/drive/folders/your-google-drive-folder-url-placeholder}{thư mục lưu trữ trực tuyến của dự án} nhằm tạo thuận lợi cho việc đối chiếu và tái lập thực nghiệm.
 
 \section{Mô tả bộ dữ liệu}
 Bộ dữ liệu khí hậu tổng hợp cuối cùng được lưu trữ cục bộ dưới định dạng cột nén Parquet. Mỗi dòng trong bảng đại diện cho một quan sát chỉ số thời tiết tổng hợp của một địa điểm cụ thể trong một ngày. Tổng thể bộ dữ liệu bao gồm 61.376 dòng, là kết quả tích lũy từ 28 trạm đo trong sáu năm liên tục từ ngày 01 tháng 01 năm 2020 đến ngày 31 tháng 12 năm 2025, tính cả hai ngày nhuận. Bộ dữ liệu chứa 12 biến số chính, phân chia thành 5 biến định danh địa lý và 7 biến đo lường thời tiết liên tục.
 
 \section{Từ điển dữ liệu}
-Từ điển dữ liệu (Data Dictionary) đóng vai trò là một tài liệu kỹ thuật tập trung nhằm định nghĩa chi tiết cấu trúc, kiểu dữ liệu, nguồn gốc và ý nghĩa vật lý của các biến số trong cơ sở dữ liệu. Trong nghiên cứu này, từ điển dữ liệu được sử dụng để:
-\begin{itemize}
-    \item \textbf{Chuẩn hóa cấu trúc dữ liệu (Schema Standardization):} Đảm bảo các thành phần trong hệ thống (Backend, Frontend và Pipeline dữ liệu) thống nhất chính xác về kiểu dữ liệu và tên gọi của từng trường dữ liệu.
-    \item \textbf{Cung cấp thông tin ngữ nghĩa (Semantic Information):} Làm rõ ý nghĩa vật lý và các đơn vị đo lường tương ứng (như độ C, milimét, kilômét trên giờ, megajoule trên mét vuông) của từng thông số thời tiết.
-    \item \textbf{Cung cấp ngữ cảnh cho trợ lý trí tuệ nhân tạo (AI Analyst Context):} Trở thành thông tin đầu vào thiết yếu để trợ lý LLM hiểu được lược đồ cơ sở dữ liệu (Database Schema), từ đó tự động biên dịch các câu lệnh ngôn ngữ tự nhiên thành các truy vấn SQL an toàn và chính xác.
-\end{itemize}
+Từ điển dữ liệu (Data Dictionary) đóng vai trò là một tài liệu kỹ thuật tập trung nhằm định nghĩa chi tiết cấu trúc, kiểu dữ liệu, nguồn gốc và ý nghĩa vật lý của các biến số trong cơ sở dữ liệu. Vai trò của từ điển dữ liệu thể hiện qua ba khía cạnh kỹ thuật cốt lõi trong toàn bộ hệ thống. Trước tiên, tài liệu này giúp chuẩn hóa cấu trúc dữ liệu (Schema Standardization) giữa các thành phần khác nhau bao gồm Backend, Frontend và đường ống dữ liệu (Data Pipeline), đảm bảo tính đồng bộ tuyệt đối về kiểu dữ liệu và tên gọi của từng trường thông tin. Tiếp theo, nó cung cấp các mô tả ngữ nghĩa (Semantic Information) chi tiết, định nghĩa rõ ràng ý nghĩa vật lý và đơn vị đo lường tương ứng của từng chỉ số thời tiết. Cuối cùng, từ điển dữ liệu cung cấp ngữ cảnh quan trọng cho trợ lý trí tuệ nhân tạo (AI Analyst Context), đóng vai trò làm thông tin đầu vào định hình giúp mô hình ngôn ngữ lớn hiểu rõ lược đồ cơ sở dữ liệu để dịch các câu hỏi ngôn ngữ tự nhiên thành mã SQL an toàn và chính xác.
 
 Dưới đây là bảng từ điển mô tả chi tiết cấu trúc và miền giá trị của các cột dữ liệu khí hậu trong tệp \texttt{climate\_daily.parquet}:
 
