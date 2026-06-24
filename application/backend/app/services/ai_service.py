@@ -9,60 +9,23 @@ _log = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        self.openai_key = os.getenv("OPENAI_API_KEY")
         self.gemini_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("AI_MODEL", "gpt-4o-mini")
-        # Base URL for any OpenAI-compatible provider (OpenAI, Groq, OpenRouter, GitHub Models, Ollama…).
-        self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
     def translate_to_sql(self, question: str) -> Dict[str, str]:
         """
         Translates a natural language question into SQL query on climate_daily table.
         Returns a dict with 'code' and 'explanation'.
         """
-        # 1. Try real API if keys are available
-        if self.openai_key:
-            return self._call_openai(question)
-        elif self.gemini_key:
+        # 1. Try real API if key is available
+        if self.gemini_key:
             return self._call_gemini(question)
         
         # 2. Heuristic fallback (Mock mode for offline demo / local grading)
         return self._generate_mock_sql(question)
 
-    def _call_openai(self, question: str) -> Dict[str, str]:
-        url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.openai_key}"
-        }
-        
-        system_prompt = self._get_system_prompt()
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Câu hỏi: {question}"}
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1
-        }
-        
-        try:
-            response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
-            if response.status_code == 200:
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                return json.loads(content)
-            else:
-                _log.warning("OpenAI API error: %s", response.text)
-        except Exception as e:
-            _log.warning("Error calling OpenAI API: %s", e)
-            
-        return self._generate_mock_sql(question)
-
     def _call_gemini(self, question: str) -> Dict[str, str]:
         # Gemini API call
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_key}"
         headers = {"Content-Type": "application/json"}
         
         system_prompt = self._get_system_prompt()
@@ -124,14 +87,8 @@ Nhiệm vụ của bạn là nhận câu hỏi ngôn ngữ tự nhiên từ ngư
 
 YÊU CẦU BẮT BUỘC:
 1. Bạn CHỈ được phép sinh câu lệnh SELECT hoặc WITH chỉ đọc dữ liệu. Tuyệt đối không chứa các từ khóa INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, v.v.
-2. Trả về kết quả ở định dạng JSON duy nhất như sau:
-{
-  "code": "MÃ SQL Ở ĐÂY",
-  "explanation": "Giải thích ngắn gọn cách câu lệnh SQL này giải quyết câu hỏi của người dùng ở đây."
-}
-3. Chỉ viết duy nhất một câu lệnh SQL và không kết thúc bằng nhiều dấu chấm phẩy.
-4. Tên địa điểm trong điều kiện WHERE phải khớp CHÍNH XÁC chuỗi không dấu trong danh sách trên (vd `location = 'Da Lat'`); TUYỆT ĐỐI không dùng tên có dấu.
-5. Nếu truy vấn có thể trả về nhiều dòng chi tiết, hãy thêm ORDER BY hợp lý và LIMIT (mặc định 100). Lấy năm bằng `year(date)`, tháng bằng `month(date)`.
+2. Trả về kết       5. Nếu truy vấn có thể trả về nhiều dòng chi tiết, hãy thêm ORDER BY hợp lý và LIMIT (mặc định 100). Lấy năm bằng `year(date)`, tháng bằng `month(date)`.
+6. Nếu câu hỏi của người dùng không liên quan đến phân tích dữ liệu khí hậu Việt Nam hoặc bảng `climate_daily` (ví dụ: các câu hỏi chào hỏi chung chung, hỏi về chủ đề ngoài lề như phim ảnh, nấu ăn, công nghệ khác...), bạn BẮT BUỘC phải trả về trường "code" là một chuỗi rỗng "" và ghi rõ lý do từ chối hỗ trợ ở trường "explanation" để người dùng đặt câu hỏi phù hợp.
 """
 
     def _generate_mock_sql(self, question: str) -> Dict[str, str]:
@@ -194,11 +151,11 @@ YÊU CẦU BẮT BUỘC:
                 "code": "SELECT date, location, region, precipitation_sum\nFROM climate_daily\nORDER BY precipitation_sum DESC\nLIMIT 10",
                 "explanation": "Lấy danh sách 10 ngày có lượng mưa cao nhất trên toàn quốc."
             }
-
-        # Default fallback
+            
+        # Filter other words as unrelated queries
         return {
-            "code": "SELECT location, region, round(AVG(temperature_2m_mean), 2) as avg_temp, round(SUM(precipitation_sum), 2) as total_rain\nFROM climate_daily\nGROUP BY location, region\nORDER BY avg_temp DESC",
-            "explanation": "Thống kê tổng quan nhiệt độ trung bình và tổng lượng mưa của tất cả các địa điểm trong cơ sở dữ liệu."
+            "code": "",
+            "explanation": "Yêu cầu không liên quan đến phân tích dữ liệu khí hậu Việt Nam. Vui lòng đặt câu hỏi liên quan đến thời tiết, nhiệt độ, lượng mưa, sức gió, hoặc bức xạ mặt trời của các địa điểm tại Việt Nam."
         }
 
     def _find_location_in_text(self, text: str) -> str:

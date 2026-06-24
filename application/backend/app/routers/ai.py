@@ -19,6 +19,12 @@ def create_proposal(request: AnalysisRequest) -> AnalysisProposal:
         # Translate question to SQL
         ai_res = ai_service.translate_to_sql(request.question)
         
+        if not ai_res.get("code"):
+            raise HTTPException(
+                status_code=400, 
+                detail=ai_res.get("explanation", "Yêu cầu không hợp lệ hoặc không liên quan đến dữ liệu khí hậu.")
+            )
+        
         proposal = AnalysisProposal(
             id=str(uuid4()),
             question=request.question,
@@ -39,6 +45,8 @@ def create_proposal(request: AnalysisRequest) -> AnalysisProposal:
         )
         
         return proposal
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Service translation failed: {e}")
 

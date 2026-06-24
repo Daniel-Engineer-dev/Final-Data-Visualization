@@ -253,7 +253,7 @@ input {
   line-height: 1.02;
   letter-spacing: -0.02em;
   margin-top: 10px;
-  max-width: 18ch;
+  max-width: 100%;
 }
 
 .lede {

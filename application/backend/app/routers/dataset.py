@@ -172,12 +172,21 @@ def get_extreme_events(
         LIMIT 100
     """
     
-    query_counts = """
+    where_clauses_counts = []
+    params_counts = [temp_threshold, rain_threshold]
+    if location:
+        where_clauses_counts.append("location = ?")
+        params_counts.append(location)
+        
+    where_counts_str = f"WHERE {' AND '.join(where_clauses_counts)}" if where_clauses_counts else ""
+    
+    query_counts = f"""
         SELECT 
             location,
-            sum(CASE WHEN temperature_2m_max >= 38.0 THEN 1 ELSE 0 END) as hot_days_count,
-            sum(CASE WHEN precipitation_sum >= 100.0 THEN 1 ELSE 0 END) as wet_days_count
+            sum(CASE WHEN temperature_2m_max >= ? THEN 1 ELSE 0 END) as hot_days_count,
+            sum(CASE WHEN precipitation_sum >= ? THEN 1 ELSE 0 END) as wet_days_count
         FROM climate_daily
+        {where_counts_str}
         GROUP BY location
         ORDER BY hot_days_count DESC, wet_days_count DESC
     """
@@ -201,15 +210,21 @@ def get_extreme_events(
             d['date'] = d['date'].strftime('%Y-%m-%d')
             wet_days.append(d)
             
-        cursor_counts = conn.execute(query_counts)
+        cursor_counts = conn.execute(query_counts, params_counts)
         cols_counts = [desc[0] for desc in cursor_counts.description]
         counts = [dict(zip(cols_counts, row)) for row in cursor_counts.fetchall()]
         
+        # Calculate total matching count in the DB without LIMIT 100
+        total_hot = conn.execute(f"SELECT count(*) FROM climate_daily {where_temp_str}", params_temp).fetchone()[0]
+        total_wet = conn.execute(f"SELECT count(*) FROM climate_daily {where_rain_str}", params_rain).fetchone()[0]
+
         conn.close()
         
         return {
             "hot_days": hot_days,
             "wet_days": wet_days,
+            "total_hot_count": total_hot,
+            "total_wet_count": total_wet,
             "counts_by_location": counts
         }
     except Exception as e:

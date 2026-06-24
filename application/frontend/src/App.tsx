@@ -30,6 +30,37 @@ const REGION_VI: Record<string, string> = {
   South: "Miền Nam",
 };
 
+const STATION_VI: Record<string, string> = {
+  "Ha Noi": "Hà Nội",
+  "Hai Phong": "Hải Phòng",
+  "Lao Cai": "Lào Cai",
+  "Lang Son": "Lạng Sơn",
+  "Dien Bien": "Điện Biên",
+  "Ha Giang": "Hà Giang",
+  "Quang Ninh": "Quảng Ninh",
+  "Son La": "Sơn La",
+  "Ninh Binh": "Ninh Bình",
+  "Thanh Hoa": "Thanh Hóa",
+  "Vinh": "Vinh",
+  "Hue": "Huế",
+  "Da Nang": "Đà Nẵng",
+  "Nha Trang": "Nha Trang",
+  "Quy Nhon": "Quy Nhơn",
+  "Da Lat": "Đà Lạt",
+  "Pleiku": "Pleiku",
+  "Buon Ma Thuot": "Buôn Ma Thuột",
+  "Phan Thiet": "Phan Thiết",
+  "Ho Chi Minh City": "TP. Hồ Chí Minh",
+  "Can Tho": "Cần Thơ",
+  "Vung Tau": "Vũng Tàu",
+  "Phu Quoc": "Phú Quốc",
+  "Ca Mau": "Cà Mau",
+  "Tay Ninh": "Tây Ninh",
+  "Bien Hoa": "Biên Hòa",
+  "Rach Gia": "Rạch Giá",
+  "Soc Trang": "Sóc Trăng",
+};
+
 // inline custom-property helper for staggered reveals
 const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
@@ -162,7 +193,11 @@ function App() {
       body: JSON.stringify({ question: aiQuestion }),
     })
       .then((res) => {
-        if (!res.ok) throw new Error("Gửi câu hỏi thất bại hoặc câu hỏi quá ngắn.");
+        if (!res.ok) {
+          return res.json().then((e) => {
+            throw new Error(e.detail || "Gửi câu hỏi thất bại hoặc câu hỏi quá ngắn.");
+          });
+        }
         return res.json();
       })
       .then((data) => {
@@ -254,7 +289,7 @@ function App() {
       },
       label: {
         show: true,
-        formatter: "{b}",
+        formatter: (p: any) => STATION_VI[p.name] || p.name,
         position: "right",
         color: PALETTE.ink,
         fontFamily: SANS_FONT,
@@ -282,8 +317,8 @@ function App() {
         trigger: "item",
         formatter: (p: any) =>
           p.value && p.value.length >= 4
-            ? `<strong>${p.name}</strong><br/>Nhiệt độ TB: ${p.value[2]}°C<br/>Lượng mưa năm: ${p.value[3]} mm`
-            : p.name,
+            ? `<strong>${STATION_VI[p.name] || p.name}</strong><br/>Nhiệt độ TB: ${p.value[2]}°C<br/>Lượng mưa năm: ${p.value[3]} mm`
+            : STATION_VI[p.name] || p.name,
       },
       legend: {
         ...legendStyle,
@@ -331,6 +366,14 @@ function App() {
   const onChartClick = (params: any) => {
     if (params.seriesType === "scatter" && params.name) {
       setSelectedStation(params.name);
+    }
+  };
+
+  const onExtremeChartClick = (params: any) => {
+    if (params.name) {
+      // Find the English key corresponding to the Vietnamese name clicked on the chart
+      const engLoc = Object.keys(STATION_VI).find(key => STATION_VI[key] === params.name) || params.name;
+      setExtremeLocFilter(engLoc);
     }
   };
 
@@ -512,6 +555,84 @@ function App() {
     };
   };
 
+  // 7. Extreme events bar chart
+  const getExtremeChartOption = () => {
+    if (!extremeData || !extremeData.counts_by_location) return {};
+    const topData = extremeData.counts_by_location;
+    const locations = topData.map((c: any) => STATION_VI[c.location] || c.location);
+    const hotDays = topData.map((c: any) => c.hot_days_count);
+    const wetDays = topData.map((c: any) => c.wet_days_count);
+
+    const isAll = extremeLocFilter === "All";
+
+    const option: any = {
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      legend: { ...legendStyle, data: ["Nắng nóng (≥38°C)", "Mưa lớn (≥100mm)"], top: 0 },
+      grid: { left: 10, right: 18, top: 44, bottom: isAll ? 65 : 45, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: locations,
+        axisLabel: { ...axisLabel, interval: 0, rotate: isAll ? 30 : 0 },
+        axisLine: axisLineSoft,
+      },
+      yAxis: {
+        type: "value",
+        name: "Số ngày",
+        axisLabel,
+        nameTextStyle,
+        splitLine: splitLineSoft,
+      },
+      series: [
+        {
+          name: "Nắng nóng (≥38°C)",
+          type: "bar",
+          data: hotDays,
+          color: PALETTE.clay,
+          barWidth: isAll ? "30%" : "20%",
+          itemStyle: { borderRadius: [4, 4, 0, 0] },
+        },
+        {
+          name: "Mưa lớn (≥100mm)",
+          type: "bar",
+          data: wetDays,
+          color: PALETTE.sky,
+          barWidth: isAll ? "30%" : "20%",
+          itemStyle: { borderRadius: [4, 4, 0, 0] },
+        },
+      ],
+    };
+
+    if (isAll) {
+      option.dataZoom = [
+        {
+          type: "slider",
+          show: true,
+          xAxisIndex: [0],
+          start: 0,
+          end: 35,
+          bottom: 10,
+          height: 18,
+          borderColor: "transparent",
+          fillerColor: "rgba(46, 111, 78, 0.12)",
+          handleIcon: "path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+          handleSize: "120%",
+          handleStyle: {
+            color: "var(--forest)",
+            shadowBlur: 3,
+            shadowColor: "rgba(0, 0, 0, 0.15)",
+          },
+          textStyle: {
+            color: "var(--ink-soft)",
+            fontFamily: SANS_FONT,
+            fontSize: 9,
+          },
+        },
+      ];
+    }
+
+    return option;
+  };
+
   // ============================================================
   //  Render
   // ============================================================
@@ -627,7 +748,7 @@ function App() {
                   <aside className="panel station reveal" style={stagger(4)}>
                     <span className="panel__label">Chi tiết trạm đo</span>
                     <div className="station__head">
-                      <h3 className="station__name">{activeStationData?.location}</h3>
+                      <h3 className="station__name">{STATION_VI[activeStationData?.location] || activeStationData?.location}</h3>
                       <span
                         className="region-chip"
                         style={{ color: REGION_COLORS[activeStationData?.region] }}
@@ -697,7 +818,7 @@ function App() {
                         <option value="All">Tất cả trạm</option>
                         {stations.map((s) => (
                           <option key={s.location} value={s.location}>
-                            {s.location} ({REGION_VI[s.region]})
+                            {STATION_VI[s.location] || s.location} ({REGION_VI[s.region]})
                           </option>
                         ))}
                       </select>
@@ -757,7 +878,7 @@ function App() {
                         <option value="All">Tất cả địa điểm</option>
                         {stations.map((s) => (
                           <option key={s.location} value={s.location}>
-                            {s.location}
+                            {STATION_VI[s.location] || s.location}
                           </option>
                         ))}
                       </select>
@@ -779,27 +900,47 @@ function App() {
                   </div>
                 </header>
 
-                <div className="extreme-grid">
-                  <div className="panel reveal" style={stagger(0)}>
-                    <span className="panel__label">Tổng số ngày cực đoan theo trạm</span>
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Địa điểm</th>
-                          <th>Nắng nóng ≥38°C</th>
-                          <th>Mưa lớn ≥100mm</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {extremeData?.counts_by_location.slice(0, 10).map((c: any) => (
-                          <tr key={c.location}>
-                            <td><strong>{c.location}</strong></td>
-                            <td className="num-hot">{c.hot_days_count}</td>
-                            <td className="num-rain">{c.wet_days_count}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {/* Stat strip for extreme events */}
+                <section className="stat-strip" style={{ marginBottom: 22 }}>
+                  <div className="stat reveal" style={stagger(0)}>
+                    <span className="stat__num tnum" style={{ color: "var(--clay)" }}>
+                      {extremeData?.total_hot_count ?? 0}
+                      <small>ngày</small>
+                    </span>
+                    <span className="stat__lbl">Tổng ngày nắng nóng cực đoan</span>
+                  </div>
+                  <div className="stat reveal" style={stagger(1)}>
+                    <span className="stat__num tnum" style={{ color: "var(--sky)" }}>
+                      {extremeData?.total_wet_count ?? 0}
+                      <small>ngày</small>
+                    </span>
+                    <span className="stat__lbl">Tổng ngày mưa lớn lịch sử</span>
+                  </div>
+                  <div className="stat reveal" style={stagger(2)}>
+                    <span className="stat__num tnum" style={{ fontSize: "1.6rem", lineHeight: "1.4" }}>
+                      {extremeData?.counts_by_location?.[0]
+                        ? `${STATION_VI[extremeData.counts_by_location[0].location] || extremeData.counts_by_location[0].location}`
+                        : "N/A"}
+                    </span>
+                    <span className="stat__lbl">Địa điểm thời tiết khắc nghiệt nhất</span>
+                  </div>
+                </section>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "22px" }}>
+                  <div className="panel chart-card reveal" style={stagger(0)}>
+                    <span className="panel__label">So sánh ngày thời tiết cực đoan giữa các trạm đo</span>
+                    <div className="chart-wrap">
+                      {extremeData ? (
+                        <ReactECharts
+                          option={getExtremeChartOption()}
+                          style={{ height: "360px" }}
+                          onEvents={{ click: onExtremeChartClick }}
+                          notMerge={true}
+                        />
+                      ) : (
+                        <div className="chart-placeholder" style={{ height: 360 }}>Đang dựng biểu đồ…</div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="panel reveal" style={stagger(1)}>
@@ -808,13 +949,13 @@ function App() {
                       <div>
                         <div className="ledger__head">
                           <Icon name="thermometer" size={18} className="ic-hot" />
-                          Nắng nóng ({extremeData?.hot_days.length || 0})
+                          Nắng nóng (Tìm thấy {extremeData?.total_hot_count ?? 0} ngày)
                         </div>
-                        <div className="scroll">
+                        <div className="scroll" style={{ maxHeight: "320px" }}>
                           {extremeData?.hot_days.slice(0, 30).map((h: any, idx: number) => (
                             <div className="entry" key={idx}>
                               <span className="entry__date">{h.date}</span>
-                              <span className="entry__loc">{h.location}</span>
+                              <span className="entry__loc">{STATION_VI[h.location] || h.location}</span>
                               <span className="entry__val is-hot">{h.temperature_2m_max}°C</span>
                             </div>
                           ))}
@@ -823,19 +964,22 @@ function App() {
                       <div>
                         <div className="ledger__head">
                           <Icon name="droplet" size={18} className="ic-rain" />
-                          Mưa lớn ({extremeData?.wet_days.length || 0})
+                          Mưa lớn (Tìm thấy {extremeData?.total_wet_count ?? 0} ngày)
                         </div>
-                        <div className="scroll">
+                        <div className="scroll" style={{ maxHeight: "320px" }}>
                           {extremeData?.wet_days.slice(0, 30).map((w: any, idx: number) => (
                             <div className="entry" key={idx}>
                               <span className="entry__date">{w.date}</span>
-                              <span className="entry__loc">{w.location}</span>
+                              <span className="entry__loc">{STATION_VI[w.location] || w.location}</span>
                               <span className="entry__val is-rain">{w.precipitation_sum} mm</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
+                    <p style={{ fontSize: "0.76rem", color: "var(--ink-faint)", marginTop: 16, fontStyle: "italic" }}>
+                      * Danh sách trên hiển thị tối đa 30 ngày có giá trị cực đoan nhất.
+                    </p>
                   </div>
                 </div>
               </div>
