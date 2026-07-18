@@ -1,12 +1,18 @@
 from uuid import uuid4
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
+from fastapi import APIRouter, HTTPException, Query
+from typing import Dict, Any, List, Optional
 
-from app.models.ai import AnalysisProposal, AnalysisRequest, ApprovalRequest, ProposalStatus
+from app.models.ai import (
+    AILogEntry,
+    AnalysisProposal,
+    AnalysisRequest,
+    ApprovalRequest,
+    ProposalStatus,
+)
 from app.services.sql_guard import ensure_read_only_sql
 from app.services.ai_service import AIService
 from app.services.db import get_db_connection
-from app.services.logger import log_ai_session
+from app.services.logger import get_ai_logs, log_ai_session
 
 router = APIRouter()
 _proposals: dict[str, AnalysisProposal] = {}
@@ -147,6 +153,16 @@ def execute_proposal(proposal_id: str) -> Dict[str, Any]:
             error_message=error_msg
         )
         raise HTTPException(status_code=400, detail=f"SQL Execution error: {error_msg}")
+
+
+@router.get("/logs", response_model=List[AILogEntry])
+def read_logs(
+    limit: int = Query(default=100, ge=1, le=500),
+    session_id: Optional[str] = Query(default=None),
+) -> List[AILogEntry]:
+    """Truy xuất lại nhật ký AI (yêu cầu, mã nguồn, giải thích, kết quả)."""
+    rows = get_ai_logs(limit=limit, session_id=session_id)
+    return [AILogEntry(**row) for row in rows]
 
 
 def _get_proposal(proposal_id: str) -> AnalysisProposal:

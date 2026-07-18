@@ -86,6 +86,18 @@ type Proposal = {
   status: string;
 };
 
+type AILog = {
+  id: number;
+  session_id: string;
+  timestamp: string;
+  question: string;
+  sql_code: string;
+  explanation: string;
+  status: string;
+  error_message: string | null;
+  row_count: number | null;
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [stations, setStations] = useState<StationOverview[]>([]);
@@ -112,6 +124,8 @@ function App() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiExecLoading, setAiExecLoading] = useState<boolean>(false);
+  const [aiLogs, setAiLogs] = useState<AILog[]>([]);
+  const [logsLoading, setLogsLoading] = useState<boolean>(false);
 
   // General Loading/Error states
   const [loading, setLoading] = useState<boolean>(true);
@@ -240,6 +254,7 @@ function App() {
         setAiExecResults(data.results);
         setCurrentProposal((prev) => (prev ? { ...prev, status: "executed" } : null));
         setAiExecLoading(false);
+        fetchLogs();
       })
       .catch((err) => {
         setAiError(err.message);
@@ -262,6 +277,28 @@ function App() {
   const handleSuggestQuestion = (qText: string) => {
     setAiQuestion(qText);
   };
+
+  const fetchLogs = () => {
+    setLogsLoading(true);
+    fetch(`${API_BASE_URL}/api/ai/logs?limit=100`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Không thể tải nhật ký AI");
+        return res.json();
+      })
+      .then((data) => {
+        setAiLogs(data);
+        setLogsLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLogsLoading(false);
+      });
+  };
+
+  // Tải lại nhật ký AI mỗi khi mở tab AI Portal
+  useEffect(() => {
+    if (activeTab === "ai") fetchLogs();
+  }, [activeTab]);
 
   // ============================================================
   //  ECharts configurations — Editorial Climate Almanac palette
@@ -1144,6 +1181,56 @@ function App() {
                       </div>
                     </div>
                   )}
+
+                  {/* ---------- AI SESSION LOGS (audit trail) ---------- */}
+                  <div className="panel logs">
+                    <div className="proposal__top">
+                      <span className="panel__label" style={{ margin: 0 }}>
+                        Nhật ký phiên AI · truy xuất lại
+                      </span>
+                      <button className="btn btn--ghost" onClick={fetchLogs} disabled={logsLoading}>
+                        <Icon name="compass" size={15} />
+                        {logsLoading ? "Đang tải…" : "Làm mới"}
+                      </button>
+                    </div>
+                    <p className="results__count">
+                      Mọi yêu cầu, mã nguồn, giải thích và kết quả đều được lưu cục bộ.
+                    </p>
+                    {aiLogs.length === 0 ? (
+                      <p className="table-hint">Chưa có phiên AI nào được ghi lại.</p>
+                    ) : (
+                      <div className="table-scroll">
+                        <table className="table">
+                          <thead>
+                            <tr>
+                              <th>Thời gian (UTC)</th>
+                              <th>Trạng thái</th>
+                              <th>Câu hỏi</th>
+                              <th>Mã SQL</th>
+                              <th>Số dòng</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {aiLogs.map((logRow) => (
+                              <tr key={logRow.id}>
+                                <td>{logRow.timestamp.replace("T", " ").slice(0, 19)}</td>
+                                <td>
+                                  <span className={`status-badge ${logRow.status === "executed" ? "is-executed" : ""}`}>
+                                    {logRow.status.toUpperCase()}
+                                  </span>
+                                </td>
+                                <td>{logRow.question}</td>
+                                <td>
+                                  <code className="log-sql">{logRow.sql_code || "—"}</code>
+                                </td>
+                                <td>{logRow.row_count ?? "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

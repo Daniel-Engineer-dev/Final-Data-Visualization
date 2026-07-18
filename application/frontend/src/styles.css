@@ -1129,3 +1129,27 @@ input[type="range"]::-moz-range-thumb {
     animation-duration: 720ms !important;
   }
 }
+
+/* ---------- AI session logs (audit trail) ---------- */
+.logs {
+  margin-top: 8px;
+}
+.log-sql {
+  display: block;
+  max-width: 420px;
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: #cfe6d8;
+  background: #21302a;
+  border: 1px solid var(--forest-deep);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.logs .table td {
+  vertical-align: top;
+}

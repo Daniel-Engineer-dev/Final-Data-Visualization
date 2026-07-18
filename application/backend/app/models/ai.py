@@ -25,3 +25,15 @@ class AnalysisProposal(BaseModel):
 class ApprovalRequest(BaseModel):
     code: str = Field(min_length=1)
 
+
+class AILogEntry(BaseModel):
+    id: int
+    session_id: str
+    timestamp: str
+    question: str
+    sql_code: str
+    explanation: str
+    status: str
+    error_message: str | None = None
+    row_count: int | None = None
+

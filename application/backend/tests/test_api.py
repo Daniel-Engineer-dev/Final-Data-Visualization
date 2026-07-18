@@ -76,3 +76,13 @@ def test_ai_analyst_flow() -> None:
     assert exec_data["status"] == "success"
     assert "results" in exec_data
     assert len(exec_data["results"]) > 0
+
+    # 4. Logs are retrievable and keep the full audit trail (draft -> approved -> executed)
+    resp_logs = client.get(f"/api/ai/logs?session_id={proposal_id}")
+    assert resp_logs.status_code == 200
+    logs = resp_logs.json()
+    statuses = {row["status"] for row in logs}
+    assert {"draft", "approved", "executed"}.issubset(statuses)
+    executed_row = next(row for row in logs if row["status"] == "executed")
+    assert executed_row["row_count"] and executed_row["row_count"] > 0
+    assert executed_row["question"] == req_payload["question"]
