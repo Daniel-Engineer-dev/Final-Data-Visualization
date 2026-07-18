@@ -28,12 +28,17 @@ def init_log_db() -> None:
             question TEXT NOT NULL,
             sql_code TEXT NOT NULL,
             explanation TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'sql',
             status TEXT NOT NULL,
             error_message TEXT,
             row_count INTEGER
         )
         """
     )
+    # Migration: thêm cột kind cho bảng cũ chưa có
+    cols = {row[1] for row in cursor.execute(f"PRAGMA table_info({_TABLE})").fetchall()}
+    if "kind" not in cols:
+        cursor.execute(f"ALTER TABLE {_TABLE} ADD COLUMN kind TEXT NOT NULL DEFAULT 'sql'")
     cursor.execute(
         f"CREATE INDEX IF NOT EXISTS idx_{_TABLE}_session ON {_TABLE}(session_id)"
     )
@@ -49,6 +54,7 @@ def log_ai_session(
     status: str,
     error_message: Optional[str] = None,
     row_count: int = 0,
+    kind: str = "sql",
 ) -> None:
     try:
         init_log_db()
@@ -60,8 +66,8 @@ def log_ai_session(
         cursor.execute(
             f"""
             INSERT INTO {_TABLE}
-            (session_id, timestamp, question, sql_code, explanation, status, error_message, row_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (session_id, timestamp, question, sql_code, explanation, kind, status, error_message, row_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
@@ -69,6 +75,7 @@ def log_ai_session(
                 question,
                 sql_code,
                 explanation,
+                kind,
                 status,
                 error_message,
                 row_count,

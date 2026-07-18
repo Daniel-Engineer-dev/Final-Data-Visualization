@@ -1,6 +1,9 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+AnalysisKind = Literal["sql", "python"]
 
 
 class ProposalStatus(StrEnum):
@@ -12,6 +15,7 @@ class ProposalStatus(StrEnum):
 
 class AnalysisRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
+    kind: AnalysisKind = "sql"
 
 
 class AnalysisProposal(BaseModel):
@@ -19,6 +23,7 @@ class AnalysisProposal(BaseModel):
     question: str
     code: str
     explanation: str
+    kind: AnalysisKind = "sql"
     status: ProposalStatus = ProposalStatus.DRAFT
 
 
@@ -33,6 +38,7 @@ class AILogEntry(BaseModel):
     question: str
     sql_code: str
     explanation: str
+    kind: str = "sql"
     status: str
     error_message: str | None = None
     row_count: int | None = None

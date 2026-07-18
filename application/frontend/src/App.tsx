@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
 import "./styles.css";
@@ -78,11 +78,14 @@ type StationOverview = {
   total_days: number;
 };
 
+type AnalysisKind = "sql" | "python";
+
 type Proposal = {
   id: string;
   question: string;
   code: string;
   explanation: string;
+  kind: AnalysisKind;
   status: string;
 };
 
@@ -93,6 +96,7 @@ type AILog = {
   question: string;
   sql_code: string;
   explanation: string;
+  kind: string;
   status: string;
   error_message: string | null;
   row_count: number | null;
@@ -118,6 +122,7 @@ function App() {
 
   // States for AI Analyst tab
   const [aiQuestion, setAiQuestion] = useState<string>("");
+  const [aiKind, setAiKind] = useState<AnalysisKind>("sql");
   const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
   const [proposalSql, setProposalSql] = useState<string>("");
   const [aiExecResults, setAiExecResults] = useState<any[] | null>(null);
@@ -191,6 +196,112 @@ function App() {
 
   const activeStationData = stations.find((s) => s.location === selectedStation) || stations[0];
 
+  // ============================================================
+  //  Kết luận & câu chuyện dữ liệu — tính tự động từ số liệu thật
+  // ============================================================
+  const viName = (loc: string) => STATION_VI[loc] || loc;
+
+  // Hồi quy tuyến tính đơn giản: trả về hệ số góc (đơn vị / năm)
+  const linearSlope = (pts: { x: number; y: number }[]): number => {
+    const n = pts.length;
+    if (n < 2) return 0;
+    const sx = pts.reduce((a, p) => a + p.x, 0);
+    const sy = pts.reduce((a, p) => a + p.y, 0);
+    const sxx = pts.reduce((a, p) => a + p.x * p.x, 0);
+    const sxy = pts.reduce((a, p) => a + p.x * p.y, 0);
+    const denom = n * sxx - sx * sx;
+    return denom === 0 ? 0 : (n * sxy - sx * sy) / denom;
+  };
+
+  const overviewInsights = useMemo<string[]>(() => {
+    if (!stations.length) return [];
+    const hottest = [...stations].sort((a, b) => b.avg_temp - a.avg_temp)[0];
+    const coolest = [...stations].sort((a, b) => a.avg_temp - b.avg_temp)[0];
+    const wettest = [...stations].sort((a, b) => b.annual_precip - a.annual_precip)[0];
+    const driest = [...stations].sort((a, b) => a.annual_precip - b.annual_precip)[0];
+    const windiest = [...stations].sort((a, b) => b.avg_wind - a.avg_wind)[0];
+    return [
+      `Nóng nhất: ${viName(hottest.location)} (${hottest.avg_temp}°C TB) — mát nhất: ${viName(coolest.location)} (${coolest.avg_temp}°C), chênh lệch ${(hottest.avg_temp - coolest.avg_temp).toFixed(1)}°C giữa các vùng.`,
+      `Mưa nhiều nhất: ${viName(wettest.location)} (~${Math.round(wettest.annual_precip).toLocaleString("vi-VN")} mm/năm) — khô nhất: ${viName(driest.location)} (~${Math.round(driest.annual_precip).toLocaleString("vi-VN")} mm/năm).`,
+      `Gió mạnh nhất ghi nhận tại ${viName(windiest.location)} (${windiest.avg_wind} km/h TB), thường là các trạm ven biển.`,
+    ];
+  }, [stations]);
+
+  const explorerInsights = useMemo<string[]>(() => {
+    if (!explorerData?.monthly_trends?.length) return [];
+    const mt = explorerData.monthly_trends;
+    const hotMonth = [...mt].sort((a: any, b: any) => b.avg_temp - a.avg_temp)[0];
+    const rainMonth = [...mt].sort((a: any, b: any) => b.avg_rain - a.avg_rain)[0];
+    const out = [
+      `Tháng nóng nhất là Tháng ${hotMonth.month_num} (${hotMonth.avg_temp}°C TB); mùa mưa đỉnh điểm vào Tháng ${rainMonth.month_num} (~${Math.round(rainMonth.avg_rain)} mm).`,
+    ];
+    // Xu hướng ấm lên theo năm từ ma trận Tháng × Năm
+    const matrix = explorerData.heatmap_matrix || [];
+    if (matrix.length) {
+      const byYear: Record<number, number[]> = {};
+      matrix.forEach((h: any) => {
+        (byYear[h.year_val] ||= []).push(h.avg_temp);
+      });
+      const yearly = Object.entries(byYear)
+        .map(([y, arr]) => ({ x: Number(y), y: arr.reduce((a, v) => a + v, 0) / arr.length }))
+        .sort((a, b) => a.x - b.x);
+      if (yearly.length >= 2) {
+        const slope = linearSlope(yearly);
+        const first = yearly[0];
+        const last = yearly[yearly.length - 1];
+        const dir = slope >= 0 ? "tăng" : "giảm";
+        out.push(
+          `Nhiệt độ TB năm ${dir} khoảng ${Math.abs(slope).toFixed(2)}°C/năm (${first.y.toFixed(1)}°C năm ${first.x} → ${last.y.toFixed(1)}°C năm ${last.x}), phản ánh xu hướng ấm lên.`,
+        );
+      }
+    }
+    return out;
+  }, [explorerData]);
+
+  const extremeInsights = useMemo<string[]>(() => {
+    if (!extremeData) return [];
+    const topHot = (extremeData.counts_by_location || [])
+      .slice()
+      .sort((a: any, b: any) => b.hot_days_count - a.hot_days_count)[0];
+    const topWet = (extremeData.counts_by_location || [])
+      .slice()
+      .sort((a: any, b: any) => b.wet_days_count - a.wet_days_count)[0];
+    const out = [
+      `Với ngưỡng hiện tại: ${Number(extremeData.total_hot_count || 0).toLocaleString("vi-VN")} ngày nắng nóng và ${Number(extremeData.total_wet_count || 0).toLocaleString("vi-VN")} ngày mưa lớn trên toàn bộ dữ liệu.`,
+    ];
+    if (topHot) out.push(`Nhiều ngày nắng nóng nhất: ${viName(topHot.location)} (${topHot.hot_days_count} ngày).`);
+    if (topWet) out.push(`Nhiều ngày mưa lớn nhất: ${viName(topWet.location)} (${topWet.wet_days_count} ngày).`);
+    return out;
+  }, [extremeData]);
+
+  const relationshipInsights = useMemo<string[]>(() => {
+    const cm = relationshipData?.correlation_matrix;
+    if (!cm) return [];
+    const labels: Record<string, string> = {
+      temperature_2m_mean: "nhiệt độ",
+      precipitation_sum: "lượng mưa",
+      wind_speed_10m_max: "tốc độ gió",
+      shortwave_radiation_sum: "bức xạ mặt trời",
+    };
+    const keys = Object.keys(cm);
+    let best: { a: string; b: string; v: number } | null = null;
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const v = cm[keys[i]]?.[keys[j]];
+        if (typeof v === "number" && (!best || Math.abs(v) > Math.abs(best.v))) {
+          best = { a: keys[i], b: keys[j], v };
+        }
+      }
+    }
+    if (!best) return [];
+    const strength = Math.abs(best.v) >= 0.6 ? "mạnh" : Math.abs(best.v) >= 0.3 ? "trung bình" : "yếu";
+    const dir = best.v >= 0 ? "thuận" : "nghịch";
+    return [
+      `Tương quan nổi bật nhất: ${labels[best.a]} ↔ ${labels[best.b]} (r = ${best.v}), quan hệ ${dir} mức ${strength}.`,
+      `Bức xạ mặt trời và lượng mưa thường tương quan nghịch: ngày nhiều mây/mưa nhận ít bức xạ hơn.`,
+    ];
+  }, [relationshipData]);
+
   // AI Analyst flows
   const handleAskAI = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +315,7 @@ function App() {
     fetch(`${API_BASE_URL}/api/ai/proposals`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: aiQuestion }),
+      body: JSON.stringify({ question: aiQuestion, kind: aiKind }),
     })
       .then((res) => {
         if (!res.ok) {
@@ -299,6 +410,22 @@ function App() {
   useEffect(() => {
     if (activeTab === "ai") fetchLogs();
   }, [activeTab]);
+
+  const renderInsights = (items: string[]) => {
+    if (!items.length) return null;
+    return (
+      <div className="panel insights reveal">
+        <span className="panel__label">
+          <Icon name="sparkle" size={15} /> Kết luận &amp; câu chuyện dữ liệu
+        </span>
+        <ul className="insights__list">
+          {items.map((text, i) => (
+            <li key={i}>{text}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
 
   // ============================================================
   //  ECharts configurations — Editorial Climate Almanac palette
@@ -833,6 +960,8 @@ function App() {
                     </div>
                   </aside>
                 </div>
+
+                {renderInsights(overviewInsights)}
               </div>
             )}
 
@@ -895,6 +1024,8 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                {renderInsights(explorerInsights)}
               </div>
             )}
 
@@ -1019,6 +1150,8 @@ function App() {
                     </p>
                   </div>
                 </div>
+
+                {renderInsights(extremeInsights)}
               </div>
             )}
 
@@ -1052,6 +1185,8 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                {renderInsights(relationshipInsights)}
               </div>
             )}
 
@@ -1062,14 +1197,31 @@ function App() {
                   <p className="eyebrow">AI Portal · Human-in-the-loop</p>
                   <h1 className="display">Trợ lý phân tích AI</h1>
                   <p className="lede">
-                    AI đề xuất mã SQL kèm giải thích. Bạn xem, chỉnh sửa và phê duyệt trước —
-                    truy vấn chỉ chạy chỉ-đọc trên dữ liệu cục bộ sau khi bạn đồng ý.
+                    AI đề xuất mã <b>SQL</b> hoặc code <b>Python (pandas)</b> kèm giải thích. Bạn xem,
+                    chỉnh sửa và phê duyệt trước — code chỉ chạy cục bộ, đã qua kiểm soát an toàn,
+                    sau khi bạn đồng ý.
                   </p>
                 </header>
 
                 <div className="ai">
                   <div className="panel">
                     <span className="panel__label">Khung yêu cầu phân tích</span>
+                    <div className="mode-toggle">
+                      <button
+                        type="button"
+                        className={`mode-toggle__btn ${aiKind === "sql" ? "is-active" : ""}`}
+                        onClick={() => setAiKind("sql")}
+                      >
+                        SQL (DuckDB)
+                      </button>
+                      <button
+                        type="button"
+                        className={`mode-toggle__btn ${aiKind === "python" ? "is-active" : ""}`}
+                        onClick={() => setAiKind("python")}
+                      >
+                        Python (pandas)
+                      </button>
+                    </div>
                     <form onSubmit={handleAskAI} className="ask__form">
                       <textarea
                         className="ask__input"
@@ -1079,25 +1231,46 @@ function App() {
                       />
                       <button type="submit" className="btn btn--primary" disabled={aiLoading}>
                         <Icon name="sparkle" size={18} />
-                        {aiLoading ? "Đang xử lý…" : "Sinh đề xuất phân tích (SQL)"}
+                        {aiLoading
+                          ? "Đang xử lý…"
+                          : `Sinh đề xuất phân tích (${aiKind === "python" ? "Python" : "SQL"})`}
                       </button>
                     </form>
 
                     <div className="suggest">
                       <p className="suggest__title">Gợi ý phân tích nhanh</p>
                       <div className="chips">
-                        <button className="chip" onClick={() => handleSuggestQuestion("So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa.")}>
-                          <Icon name="droplet" size={15} /> So sánh mưa Đà Nẵng &amp; HCMC
-                        </button>
-                        <button className="chip" onClick={() => handleSuggestQuestion("Tìm các tháng có nhiệt độ bất thường tại Hà Nội.")}>
-                          <Icon name="thermometer" size={15} /> Nhiệt độ bất thường Hà Nội
-                        </button>
-                        <button className="chip" onClick={() => handleSuggestQuestion("Nhóm các địa điểm có đặc điểm khí hậu tương đồng.")}>
-                          <Icon name="compass" size={15} /> Phân cụm khí hậu tương đồng
-                        </button>
-                        <button className="chip" onClick={() => handleSuggestQuestion("Kiểm tra quan hệ lượng mưa và bức xạ mặt trời ở ba miền.")}>
-                          <Icon name="sun" size={15} /> Quan hệ mưa &amp; bức xạ
-                        </button>
+                        {aiKind === "sql" ? (
+                          <>
+                            <button className="chip" onClick={() => handleSuggestQuestion("So sánh lượng mưa giữa Đà Nẵng và Thành phố Hồ Chí Minh theo mùa.")}>
+                              <Icon name="droplet" size={15} /> So sánh mưa Đà Nẵng &amp; HCMC
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Tìm các tháng có nhiệt độ bất thường tại Hà Nội.")}>
+                              <Icon name="thermometer" size={15} /> Nhiệt độ bất thường Hà Nội
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Nhóm các địa điểm có đặc điểm khí hậu tương đồng.")}>
+                              <Icon name="compass" size={15} /> Phân cụm khí hậu tương đồng
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Kiểm tra quan hệ lượng mưa và bức xạ mặt trời ở ba miền.")}>
+                              <Icon name="sun" size={15} /> Quan hệ mưa &amp; bức xạ
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Xếp hạng các địa điểm nóng nhất theo nhiệt độ trung bình.")}>
+                              <Icon name="thermometer" size={15} /> Xếp hạng nơi nóng nhất
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Tính lượng mưa trung bình theo từng tháng.")}>
+                              <Icon name="droplet" size={15} /> Mưa trung bình theo tháng
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Xu hướng nhiệt độ trung bình theo năm.")}>
+                              <Icon name="compass" size={15} /> Xu hướng ấm lên theo năm
+                            </button>
+                            <button className="chip" onClick={() => handleSuggestQuestion("Làm sạch dữ liệu khuyết bằng dropna và đếm số dòng.")}>
+                              <Icon name="sparkle" size={15} /> Làm sạch dữ liệu (dropna)
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1120,7 +1293,10 @@ function App() {
 
                       <div className="sql">
                         <label className="sql__label">
-                          <Icon name="edit" size={13} /> Câu lệnh SQL — có thể chỉnh trực tiếp
+                          <Icon name="edit" size={13} />{" "}
+                          {currentProposal.kind === "python"
+                            ? "Code Python (pandas) — có thể chỉnh trực tiếp"
+                            : "Câu lệnh SQL — có thể chỉnh trực tiếp"}
                         </label>
                         <textarea
                           className="sql__editor"
@@ -1206,7 +1382,8 @@ function App() {
                               <th>Thời gian (UTC)</th>
                               <th>Trạng thái</th>
                               <th>Câu hỏi</th>
-                              <th>Mã SQL</th>
+                              <th>Loại</th>
+                              <th>Mã nguồn</th>
                               <th>Số dòng</th>
                             </tr>
                           </thead>
@@ -1221,9 +1398,12 @@ function App() {
                                 </td>
                                 <td>{logRow.question}</td>
                                 <td>
+                                  <span className="kind-badge">{(logRow.kind || "sql").toUpperCase()}</span>
+                                </td>
+                                <td>
                                   <code className="log-sql">{logRow.sql_code || "—"}</code>
                                 </td>
-                                <td>{logRow.row_count ?? "—"}</td>
+                                <td>{logRow.status === "executed" ? logRow.row_count : "—"}</td>
                               </tr>
                             ))}
                           </tbody>

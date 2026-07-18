@@ -18,17 +18,27 @@ class AIService:
         """
         # 1. Try real API if key is available
         if self.gemini_key:
-            return self._call_gemini(question)
-        
+            return self._call_gemini(question, self._get_system_prompt(), self._generate_mock_sql)
+
         # 2. Heuristic fallback (Mock mode for offline demo / local grading)
         return self._generate_mock_sql(question)
 
-    def _call_gemini(self, question: str) -> Dict[str, str]:
+    def translate_to_python(self, question: str) -> Dict[str, str]:
+        """
+        Translates a natural language question into pandas analysis code.
+        The code operates on a DataFrame `df` (toàn bộ bảng climate_daily) và phải
+        gán kết quả vào biến `result`. Returns a dict with 'code' and 'explanation'.
+        """
+        if self.gemini_key:
+            return self._call_gemini(question, self._get_python_system_prompt(), self._generate_mock_python)
+
+        return self._generate_mock_python(question)
+
+    def _call_gemini(self, question: str, system_prompt: str, fallback) -> Dict[str, str]:
         # Gemini API call
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_key}"
         headers = {"Content-Type": "application/json"}
-        
-        system_prompt = self._get_system_prompt()
+
         payload = {
             "contents": [
                 {
@@ -53,8 +63,8 @@ class AIService:
                 _log.warning("Gemini API error: %s", response.text)
         except Exception as e:
             _log.warning("Error calling Gemini API: %s", e)
-            
-        return self._generate_mock_sql(question)
+
+        return fallback(question)
 
     def _get_system_prompt(self) -> str:
         return """
@@ -156,6 +166,99 @@ YÊU CẦU BẮT BUỘC:
         return {
             "code": "",
             "explanation": "Yêu cầu không liên quan đến phân tích dữ liệu khí hậu Việt Nam. Vui lòng đặt câu hỏi liên quan đến thời tiết, nhiệt độ, lượng mưa, sức gió, hoặc bức xạ mặt trời của các địa điểm tại Việt Nam."
+        }
+
+    def _get_python_system_prompt(self) -> str:
+        return """
+Bạn là trợ lý AI phân tích dữ liệu khí hậu Việt Nam bằng thư viện pandas.
+Có sẵn một DataFrame tên `df` (đã nạp toàn bộ bảng climate_daily) và thư viện `pd` (pandas).
+Các cột của `df`:
+- date (datetime), location (str), region (str: North/Central/South), latitude, longitude (float)
+- temperature_2m_max, temperature_2m_min, temperature_2m_mean (float, °C)
+- precipitation_sum, rain_sum (float, mm), wind_speed_10m_max (float, km/h)
+- shortwave_radiation_sum (float, MJ/m²)
+
+Tên location bằng TIẾNG ANH KHÔNG DẤU (ví dụ 'Ha Noi', 'Da Nang', 'Ho Chi Minh City', 'Da Lat', 'Hue').
+
+YÊU CẦU BẮT BUỘC khi sinh code Python:
+1. CHỈ dùng `df` và `pd`. TUYỆT ĐỐI KHÔNG được `import` bất cứ thứ gì.
+2. KHÔNG dùng eval, exec, open, os, sys, getattr, hay thuộc tính dunder (__...__).
+3. Phải GÁN kết quả cuối cùng vào biến tên `result` (nên là DataFrame hoặc Series).
+4. Không đọc/ghi file, không gọi mạng. Chỉ tính toán trên `df`.
+5. Nếu câu hỏi không liên quan dữ liệu khí hậu, trả trường 'code' là chuỗi rỗng "" và giải thích lý do.
+
+Trả JSON gồm hai trường 'code' (chuỗi code Python) và 'explanation' (giải thích tiếng Việt).
+"""
+
+    def _generate_mock_python(self, question: str) -> Dict[str, str]:
+        """Sinh sẵn vài đoạn pandas cho chế độ offline / chấm cục bộ."""
+        q = question.lower()
+
+        # Xếp hạng nhiệt độ trung bình theo địa điểm
+        if ("nóng" in q or "nhiệt độ" in q) and ("nhất" in q or "xếp hạng" in q or "top" in q):
+            return {
+                "code": (
+                    "result = (\n"
+                    "    df.groupby('location')['temperature_2m_mean']\n"
+                    "      .mean()\n"
+                    "      .round(2)\n"
+                    "      .sort_values(ascending=False)\n"
+                    "      .reset_index(name='nhiet_do_tb')\n"
+                    "      .head(10)\n"
+                    ")"
+                ),
+                "explanation": "Tính nhiệt độ trung bình dài hạn theo từng địa điểm và lấy 10 nơi nóng nhất.",
+            }
+
+        # Lượng mưa trung bình theo tháng
+        if "mưa" in q and ("tháng" in q or "mùa" in q):
+            return {
+                "code": (
+                    "tmp = df.copy()\n"
+                    "tmp['thang'] = tmp['date'].dt.month\n"
+                    "result = (\n"
+                    "    tmp.groupby('thang')['precipitation_sum']\n"
+                    "       .mean()\n"
+                    "       .round(2)\n"
+                    "       .reset_index(name='luong_mua_tb')\n"
+                    ")"
+                ),
+                "explanation": "Trích tháng từ cột ngày rồi tính lượng mưa trung bình mỗi tháng để thấy mùa mưa.",
+            }
+
+        # Xu hướng ấm lên theo năm
+        if "năm" in q and ("xu hướng" in q or "ấm" in q or "tăng" in q or "biến đổi" in q):
+            return {
+                "code": (
+                    "tmp = df.copy()\n"
+                    "tmp['nam'] = tmp['date'].dt.year\n"
+                    "result = (\n"
+                    "    tmp.groupby('nam')['temperature_2m_mean']\n"
+                    "       .mean()\n"
+                    "       .round(3)\n"
+                    "       .reset_index(name='nhiet_do_tb_nam')\n"
+                    ")"
+                ),
+                "explanation": "Tính nhiệt độ trung bình theo từng năm để quan sát xu hướng ấm lên.",
+            }
+
+        # Loại bỏ giá trị khuyết rồi thống kê (đúng tinh thần ví dụ dropna của đề bài)
+        if "khuyết" in q or "thiếu" in q or "null" in q or "dropna" in q or "làm sạch" in q:
+            return {
+                "code": (
+                    "clean = df.dropna()\n"
+                    "result = pd.DataFrame({\n"
+                    "    'so_dong_goc': [len(df)],\n"
+                    "    'so_dong_sau_lam_sach': [len(clean)],\n"
+                    "    'so_dong_bi_khuyet': [len(df) - len(clean)],\n"
+                    "})"
+                ),
+                "explanation": "Dùng dropna() loại các dòng khuyết và so sánh số dòng trước/sau khi làm sạch.",
+            }
+
+        return {
+            "code": "",
+            "explanation": "Yêu cầu chưa rõ để sinh code pandas. Hãy hỏi về nhiệt độ, lượng mưa theo tháng/năm, xu hướng, hoặc làm sạch dữ liệu khuyết.",
         }
 
     def _find_location_in_text(self, text: str) -> str:
