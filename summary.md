@@ -1,137 +1,101 @@
-# Hướng dẫn Tổng quan và Vận hành Dự án - Vietnam Climate Pulse
+# Báo Cáo Tổng Quan Đồ Án - Vietnam Climate Pulse
 
-Tài liệu này giải thích chi tiết toàn bộ các công việc đã thực hiện, cấu trúc thư mục ứng dụng, cơ chế hoạt động của pipeline dữ liệu, cách tải dữ liệu kiểm chứng và cách khởi chạy toàn bộ dự án.
-
----
-
-## 1. Các công việc đã thực hiện
-Dự án **Vietnam Climate Pulse** đã được thiết lập đầy đủ tất cả các thành phần để tạo ra một ứng dụng phân tích dữ liệu khí hậu hoàn chỉnh:
-1. **Thiết lập cấu hình trạm đo:** Chọn 28 địa điểm đại diện cho 3 miền Bắc, Trung, Nam tại Việt Nam.
-2. **Xây dựng Pipeline Dữ liệu:** Viết CLI tự động gọi API Open-Meteo để tải dữ liệu lịch sử từ 2020 đến 2025. Xử lý thành công lỗi rate-limit bằng cơ chế tự động ngủ 65 giây và thử lại.
-3. **Phân tích EDA & Trực quan hóa:** Chạy phân tích phân bố nhiệt độ, lượng mưa mùa vụ và tương quan đa biến, tạo ra các biểu đồ lưu trong báo cáo.
-4. **Xây dựng Backend API:** FastAPI + DuckDB cho phép truy vấn trực tiếp file Parquet tốc độ cao mà không cần cơ sở dữ liệu cồng kềnh.
-5. **Tích hợp AI Analyst (Human-in-the-loop):** Module AI chuyển câu hỏi tự nhiên thành SQL chỉ đọc, giao diện cho phép người dùng xem, chỉnh sửa và phê duyệt mã SQL trước khi thực thi local để bảo vệ dữ liệu.
-6. **Thiết kế Frontend Dashboard:** Xây dựng giao diện React + ECharts sử dụng phong cách Dark Mode và Glassmorphism cao cấp.
-7. **Kiểm thử tự động:** Viết bộ test và xác minh an toàn SQL (pass 11/11 test cases).
+Tài liệu này cung cấp cái nhìn tổng quan về đồ án Trực quan hóa dữ liệu khí hậu Việt Nam, bao gồm cấu trúc bộ dữ liệu (dataset), ý nghĩa các biến số, mục tiêu phân tích của từng tab trên Dashboard, chi tiết về cơ chế hoạt động của tính năng AI Analyst Portal, và kiến trúc thư mục của ứng dụng.
 
 ---
 
-## 2. Giải thích cấu trúc thư mục dự án
+## 1. Cấu Trúc Bộ Dữ Liệu (Dataset)
 
-Sơ đồ cấu trúc các thư mục chính trong dự án:
+Dữ liệu được thu thập từ API nguồn mở Open-Meteo, bao gồm dữ liệu khí hậu thực tế hàng ngày của 28 tỉnh/thành phố trải dài khắp 3 miền (Bắc, Trung, Nam) tại Việt Nam trong giai đoạn 6 năm (2020 - 2025). 
 
-```text
-Final-Data-Visulization/
-├── data/                       # Lưu trữ dữ liệu dự án
-│   ├── raw/                    # Dữ liệu JSON thô tải từ API cho từng trạm
-│   ├── processed/              # Dữ liệu sạch dạng climate_daily.parquet
-│   └── logs/                   # Nhật ký SQLite lưu các phiên làm việc của AI
-├── data_pipeline/              # Pipeline tải, làm sạch và xác thực dữ liệu
-│   ├── config/                 # Chứa file cấu hình locations.csv (28 trạm đo)
-│   ├── src/climate_pipeline/   # Code Python thực thi thu thập và làm sạch
-│   └── tests/                  # Bộ kiểm thử cho pipeline
-├── application/                # Ứng dụng web
-│   ├── backend/                # FastAPI Web Server (Python)
-│   │   ├── app/                # Chứa core, routers, models và services
-│   │   └── tests/              # Bộ kiểm thử API backend và SQL guard
-│   └── frontend/               # Giao diện dashboard React + TypeScript
-│       ├── src/App.tsx         # Giao diện chính và tích hợp ECharts
-│       └── src/styles.css      # CSS phong cách Dark Mode & Glassmorphism
-└── report/                     # Báo cáo Latex của đồ án
-```
+Toàn bộ dữ liệu được lưu trữ trong một tệp `climate_daily.parquet` (hơn 61.376 bản ghi) nhằm tối ưu hóa tốc độ truy vấn phân tích.
 
-### Chi tiết chức năng từng thư mục:
+### Ý nghĩa của từng biến (Data Dictionary):
 
-### 2.1. Thư mục `data/`
-Lưu trữ toàn bộ dữ liệu của dự án local, đảm bảo tính tái tạo kết quả mà không cần truy vấn online liên tục:
-* **`data/raw/`**: Chứa 28 file JSON thô (ví dụ: `weather_ha_noi.json`, `weather_da_nang.json`) tương ứng với 28 địa điểm đã tải về. Đây là bằng chứng dữ liệu thô phục vụ cho việc kiểm chứng.
-* **`data/processed/`**: Chứa tệp dữ liệu duy nhất [climate_daily.parquet](file:///d:/Final-Data-Visulization/data/processed/climate_daily.parquet) đã làm sạch (61.376 dòng, không có giá trị khuyết). Định dạng Parquet giúp truy vấn cực nhanh qua DuckDB.
-* **`data/logs/`**: Chứa tệp SQLite [ai_sessions.sqlite3](file:///d:/Final-Data-Visulization/data/logs/ai_sessions.sqlite3) lưu toàn bộ nhật ký prompt của người dùng, mã SQL sinh ra bởi AI và số lượng dòng kết quả trả về.
-
-### 2.2. Thư mục `data_pipeline/`
-Chứa mã nguồn chịu trách nhiệm tự động hóa quy trình thu thập dữ liệu (ETL):
-* **`config/locations.csv`**: File chứa thông tin 28 trạm khí hậu gồm: tên địa điểm, miền (North/Central/South), vĩ độ và kinh độ.
-* **`src/climate_pipeline/collect_weather.py`**: Chứa logic gọi API Open-Meteo, lưu dữ liệu thô vào `data/raw/`, gộp dữ liệu, chuẩn hóa định dạng thời gian và xuất ra file Parquet. Script có cơ chế tự động nạp dữ liệu từ cache JSON local nếu đã tồn tại để tránh gọi API trùng lặp.
-* **`src/climate_pipeline/cli.py`**: Xây dựng giao diện dòng lệnh (CLI). Cung cấp 2 lệnh:
-  * `collect`: Thực thi tải dữ liệu từ API và tiền xử lý.
-  * `validate`: Chạy kiểm tra chất lượng dữ liệu (đếm số dòng >= 2000, kiểm tra 7 cột bắt buộc, thống kê tỷ lệ khuyết).
-
-### 2.3. Thư mục `application/`
-Chứa mã nguồn của toàn bộ ứng dụng web (Backend FastAPI và Frontend React):
-
-#### A. Backend (`application/backend/`)
-* **`app/main.py`**: Điểm khởi chạy FastAPI, cấu hình CORS và nạp các router.
-* **`app/core/config.py`**: Nạp các cấu hình và biến môi trường đường dẫn dữ liệu.
-* **`app/services/db.py`**: Quản lý kết nối DuckDB và đăng ký View `climate_daily` trỏ đến file Parquet.
-* **`app/services/ai_service.py`**: Nhận câu hỏi tự nhiên từ người dùng và dịch thành mã SQL. Hỗ trợ gọi API OpenAI/Gemini hoặc chạy chế độ **Mock fallback** dịch các câu hỏi gợi ý ngoại tuyến.
-* **`app/services/sql_guard.py`**: Bộ kiểm soát an toàn (Guardrails). Kiểm tra mã SQL và chặn các câu lệnh ghi/xóa dữ liệu độc hại để bảo vệ an toàn hệ thống.
-* **`app/services/logger.py`**: Khởi tạo và ghi nhật ký hoạt động của AI Analyst vào SQLite.
-* **`app/routers/dataset.py`**: Định nghĩa các API endpoint trả dữ liệu phân tích cho dashboard (Overview, Explorer, Extreme Events, Relationship Lab).
-* **`app/routers/ai.py`**: Định nghĩa API điều phối luồng đề xuất, phê duyệt và thực thi SQL của AI Analyst.
-* **`tests/`**: Chứa unit tests kiểm tra tính đúng đắn của các API và bộ lọc SQL an toàn.
-
-#### B. Frontend (`application/frontend/`)
-* **`src/App.tsx`**: File giao diện React chính. Quản lý trạng thái tab hoạt động, gọi các API backend và định hình cấu trúc biểu đồ ECharts cho từng tab.
-* **`src/styles.css`**: File CSS chứa toàn bộ mã trang trí giao diện Dark Mode, hiệu ứng Glassmorphism, bóng mờ neon, scrollbars và các hiệu ứng chuyển động mượt mà.
+| Tên biến | Kiểu dữ liệu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| `date` | Timestamp | Ngày ghi nhận dữ liệu thời tiết. |
+| `location` | String | Tên địa điểm/thành phố (VD: Hà Nội, Đà Nẵng, TP.HCM). |
+| `region` | String | Vùng miền tương ứng (North, Central, South). |
+| `latitude` | Double | Vĩ độ của trạm đo. |
+| `longitude` | Double | Kinh độ của trạm đo. |
+| `temperature_2m_mean` | Double | Nhiệt độ trung bình ngày (°C) đo ở độ cao 2m. |
+| `temperature_2m_max` | Double | Nhiệt độ cao nhất trong ngày (°C). |
+| `temperature_2m_min` | Double | Nhiệt độ thấp nhất trong ngày (°C). |
+| `precipitation_sum` | Double | Tổng lượng giáng thủy trong ngày (mm). |
+| `rain_sum` | Double | Tổng lượng mưa trong ngày (mm). |
+| `wind_speed_10m_max` | Double | Tốc độ gió cực đại trong ngày (km/h) đo ở độ cao 10m. |
+| `shortwave_radiation_sum` | Double | Tổng bức xạ sóng ngắn (MJ/m²) - thước đo mức độ nắng. |
 
 ---
 
-## 3. Hướng dẫn Tải và Kiểm chứng dữ liệu
+## 2. Mục Tiêu Phân Tích Của Từng Tab Trên Dashboard
 
-Để tự chạy quy trình tải và xác thực dữ liệu khí hậu, hãy thực hiện theo các bước sau:
+Dashboard được thiết kế theo tư duy từ tổng quan đến chi tiết, chia thành 5 tab riêng biệt, mỗi tab giải quyết một mục tiêu phân tích cụ thể:
 
-1. Mở terminal và di chuyển vào thư mục `data_pipeline`:
-   ```bash
-   cd d:\Final-Data-Visulization\data_pipeline
-   ```
-2. Kích hoạt môi trường ảo Python:
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
-3. **Chạy lệnh tải dữ liệu (Collect):**
-   *(Lệnh này sẽ quét danh sách trong locations.csv, kiểm tra cache local trong data/raw, tải các địa điểm còn thiếu từ API và xuất ra file Parquet)*
-   ```bash
-   climate-pipeline collect
-   ```
-4. **Chạy lệnh xác thực chất lượng (Validate):**
-   *(Lệnh này sẽ kiểm tra xem file Parquet có đủ điều kiện như số dòng >= 2000, đủ 7 cột bắt buộc, không bị rỗng dữ liệu hay không)*
-   ```bash
-   climate-pipeline validate
-   ```
+### 2.1. Tab Tổng Quan Trạm Đo (Overview)
+* **Mục tiêu:** Cung cấp cái nhìn toàn cảnh về bộ dữ liệu. Giúp người dùng nắm bắt nhanh các chỉ số KPI cơ bản (nhiệt độ trung bình, lượng mưa tổng) của các trạm đo trên bản đồ Việt Nam.
+* **Biểu đồ chính:** Bản đồ phân bố trạm đo, Bảng tóm tắt chỉ số trung bình theo miền.
+
+### 2.2. Tab Khám Phá Khí Hậu (Explorer)
+* **Mục tiêu:** Phân tích xu hướng (Trend) và tính mùa vụ (Seasonality) của thời tiết qua các năm. Trả lời câu hỏi: Khí hậu thay đổi ra sao theo chu kỳ tháng/năm? 
+* **Biểu đồ chính:** Heatmap biến thiên nhiệt độ theo tháng, Line chart/Bar chart theo dõi nhiệt độ, lượng mưa, và bức xạ theo chuỗi thời gian.
+
+### 2.3. Tab Thời Tiết Cực Đoan (Extreme Weather)
+* **Mục tiêu:** Nhận diện và thống kê các dị thường thời tiết (Outliers). Phân tích sự phân bố của các đợt nắng nóng gay gắt hoặc mưa bão lớn.
+* **Biểu đồ chính:** Boxplot so sánh độ phân tán nhiệt độ giữa các miền, Biểu đồ cột đếm số ngày cực đoan dựa trên ngưỡng do người dùng tự điều chỉnh (Interactive Slider).
+
+### 2.4. Tab Tương Quan Khí Hậu (Relationship)
+* **Mục tiêu:** Khám phá mối quan hệ tuyến tính/phi tuyến giữa các biến khí hậu với nhau, hoặc giữa biến khí hậu và yếu tố địa lý. Trả lời câu hỏi: "Nhiệt độ có tương quan thế nào với bức xạ mặt trời?" hay "Vĩ độ ảnh hưởng thế nào đến nhiệt độ?".
+* **Biểu đồ chính:** Ma trận tương quan (Correlation Heatmap), Biểu đồ phân tán (Scatter plot) kết hợp đường hồi quy.
+
+### 2.5. Tab AI Analyst Portal (Tương tác động)
+* **Mục tiêu:** Vượt ra khỏi các biểu đồ tĩnh được lập trình sẵn. Cho phép người dùng đặt câu hỏi bằng ngôn ngữ tự nhiên (Tiếng Việt) để truy vấn bất kỳ thông tin insight nào chưa có trên Dashboard.
 
 ---
 
-## 4. Hướng dẫn Chạy dự án
+## 3. Kiến Trúc & Cách Triển Khai AI Analyst Portal
 
-Để chạy toàn bộ ứng dụng web trên môi trường local, bạn cần chạy đồng thời FastAPI Backend và Vite Frontend:
+Tính năng **AI Analyst Portal** là điểm nhấn của đồ án, được xây dựng theo mô hình **Human-in-the-loop (Con người trong vòng lặp)** nhằm đảm bảo tính an toàn và minh bạch tuyệt đối.
 
-### Bước 1: Khởi động Backend API
-1. Mở một cửa sổ Terminal mới và di chuyển vào thư mục `application/backend`:
-   ```bash
-   cd d:\Final-Data-Visulization\application\backend
-   ```
-2. Kích hoạt môi trường ảo:
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
-3. Chạy uvicorn server:
-   ```bash
-   python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-   ```
-   *Backend API sẽ chạy tại địa chỉ: `http://localhost:8000`*
+### Công nghệ sử dụng:
+* **LLM (Large Language Model):** Sử dụng API của Gemini/OpenAI để dịch câu hỏi tự nhiên thành mã SQL (hoặc Python Pandas). *Tại sao?* Vì LLM có khả năng suy luận ngữ cảnh và sinh mã lập trình cực tốt.
+* **DuckDB:** Cơ sở dữ liệu phân tích tại memory. *Tại sao?* Tốc độ truy vấn trực tiếp trên file `.parquet` cực kỳ nhanh mà không cần phải cài đặt một hệ quản trị CSDL cồng kềnh như PostgreSQL.
+* **FastAPI:** Làm Backend Server. Đảm bảo tốc độ phản hồi nhanh, hỗ trợ async.
+* **Cơ chế Guardrails:** Lớp bảo mật tự xây dựng (`sql_guard.py` và `python_guard.py`) dùng AST (Abstract Syntax Tree) và Regex để chặn các truy vấn phá hoại.
 
-### Bước 2: Khởi động Frontend Dashboard
-1. Mở thêm một cửa sổ Terminal thứ hai và di chuyển vào thư mục `application/frontend`:
-   ```bash
-   cd d:\Final-Data-Visulization\application\frontend
-   ```
-2. Khởi chạy Vite dev server:
-   ```bash
-   npm run dev
-   ```
-   *Frontend Server sẽ chạy tại địa chỉ: `http://localhost:5173`*
+### Luồng thực thi (Execution Flow):
+1. **Người dùng gõ câu hỏi:** Người dùng nhập yêu cầu bằng Tiếng Việt (Ví dụ: *"Năm 2023 miền nào có tổng lượng mưa lớn nhất?"*) và nhấn "Sinh đề xuất phân tích".
+2. **AI sinh mã (Generation):** Frontend gửi câu hỏi xuống Backend (`/api/ai/ask`). Backend gọi API LLM kèm theo Schema của bảng dữ liệu `climate_daily`. LLM trả về câu lệnh SQL.
+3. **Phân tích an toàn (Guardrail check):** Mã SQL được đưa qua module `sql_guard.py`. Hệ thống xác minh đây là lệnh chỉ đọc (`SELECT`), cấm các lệnh phá hoại (`DROP`, `DELETE`, `INSERT`, `UPDATE`).
+4. **Đề xuất lên UI:** Backend trả mã SQL đã duyệt về Frontend. Mã này được hiển thị rõ ràng cho người dùng xem. Mã **chưa được chạy ngay**.
+5. **Human-in-the-loop (Phê duyệt):** Người dùng đọc mã SQL, có thể tự chỉnh sửa (nếu hiểu SQL) để tinh chỉnh truy vấn. Sau khi chắc chắn, người dùng nhấn nút **"Phê duyệt & Chạy local"**.
+6. **Thực thi cục bộ (Execution):** Frontend gửi mã SQL đã duyệt lên endpoint (`/api/ai/execute`). Backend sử dụng DuckDB chạy câu lệnh SQL trực tiếp trên file `climate_daily.parquet` của server.
+7. **Trả kết quả & Ghi log:** Kết quả truy vấn được chuyển thành JSON trả về Frontend để hiển thị dưới dạng bảng dữ liệu. Đồng thời, toàn bộ phiên (Prompt, Code, Số dòng kết quả, Thời gian) được ghi nhận vào `ai_sessions.sqlite3` để kiểm toán (Audit logs).
 
-### Bước 3: Truy cập và Kiểm thử
-* Mở trình duyệt và truy cập vào địa chỉ: `http://localhost:5173`.
-* Bạn sẽ thấy giao diện Dashboard thời tiết Dark Mode hiển thị đầy đủ biểu đồ.
-* Di chuyển qua các tab để kiểm tra tính năng. Tại tab **AI Analyst Portal**, bạn có thể bấm vào các câu hỏi gợi ý và nhấn nút **"Phê duyệt & Chạy local"** để xem AI dịch mã SQL và truy vấn DuckDB trả kết quả trực tiếp lên bảng dữ liệu.
+---
+
+## 4. Kiến Trúc Ứng Dụng (Application Architecture)
+
+Toàn bộ mã nguồn chạy ứng dụng được đặt trong thư mục `application/`, phân tách rõ ràng thành hai phần `backend/` và `frontend/`:
+
+### 4.1. Backend (FastAPI + Python)
+Nhiệm vụ chính là cung cấp API kết nối dữ liệu (DuckDB) và xử lý logic AI.
+* `app/main.py`: Điểm khởi chạy của server FastAPI.
+* `app/core/`: Chứa các file cấu hình hệ thống (như đường dẫn file data, API keys).
+* `app/models/`: Định nghĩa các cấu trúc dữ liệu (Pydantic models) cho API (VD: `ai.py` định nghĩa request/response cho AI, cấu trúc log).
+* `app/routers/`: Chứa các API endpoints tiếp nhận request từ Frontend (VD: `/api/ai/ask`).
+* `app/services/`: Nơi chứa toàn bộ logic cốt lõi (Business logic):
+  * `ai_service.py`: Giao tiếp với LLM API để tạo sinh mã SQL/Python.
+  * `db.py`: Khởi tạo và quản lý kết nối DuckDB đến file `climate_daily.parquet`.
+  * `sql_guard.py` & `python_guard.py`: Các module bảo mật (Guardrails) phân tích cú pháp AST để chặn mã độc.
+  * `logger.py`: Ghi nhận lịch sử truy vấn vào CSDL SQLite.
+* `tests/`: Bộ kiểm thử (Pytest) đảm bảo API và các lớp bảo mật hoạt động đúng chuẩn.
+
+### 4.2. Frontend (React + TypeScript + Vite)
+Nhiệm vụ chính là giao diện hiển thị Dashboard và tương tác trực quan với người dùng.
+* `src/App.tsx`: Trái tim của giao diện, một file duy nhất (Single Page Application) đảm nhiệm việc điều hướng 5 tab, gọi API lấy dữ liệu và render toàn bộ các biểu đồ ECharts.
+* `src/styles.css` & `index.css`: Toàn bộ CSS thuần tùy chỉnh UI, áp dụng các kỹ thuật thiết kế hiện đại như Glassmorphism.
+* `src/theme.ts`: Nơi cấu hình các token màu sắc (Color palette), định nghĩa font chữ và theme cho ECharts để đảm bảo sự đồng bộ trên toàn ứng dụng.
+* `src/utils.ts`: Chứa các hàm hỗ trợ tính toán phía client (như tính toán trung bình, nhận diện các đợt thời tiết cực đoan (outliers), chuẩn bị dữ liệu vẽ Boxplot).
+* `package.json` & `vite.config.ts`: Quản lý các thư viện (React, ECharts, Axios) và cấu hình trình đóng gói Vite.
