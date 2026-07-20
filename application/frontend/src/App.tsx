@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
+import prepareBoxplotData from "echarts/extension/dataTool/prepareBoxplotData";
 import "./styles.css";
 import vietnamGeo from "./vietnam-geo.json";
 import { Icon } from "./Icon";
+import { Select } from "./Select";
+import { humanizeColumn } from "./columnLabels";
 import {
   PALETTE,
   REGION_COLORS,
@@ -79,6 +82,9 @@ type StationOverview = {
 };
 
 type AnalysisKind = "sql" | "python";
+type ChartType = "bar" | "line" | "pie" | "scatter";
+
+type ChartSpec = { type: ChartType; x: string; y: string };
 
 type Proposal = {
   id: string;
@@ -86,6 +92,7 @@ type Proposal = {
   code: string;
   explanation: string;
   kind: AnalysisKind;
+  chart?: ChartSpec | null;
   status: string;
 };
 
@@ -126,18 +133,44 @@ function App() {
   const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
   const [proposalSql, setProposalSql] = useState<string>("");
   const [aiExecResults, setAiExecResults] = useState<any[] | null>(null);
+  const [resultView, setResultView] = useState<"table" | "chart">("table");
+  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [chartX, setChartX] = useState<string>("");
+  const [chartY, setChartY] = useState<string>("");
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiExecLoading, setAiExecLoading] = useState<boolean>(false);
   const [aiLogs, setAiLogs] = useState<AILog[]>([]);
   const [logsLoading, setLogsLoading] = useState<boolean>(false);
+  const [logPage, setLogPage] = useState<number>(1);
+  const LOG_PAGE_SIZE = 5;
 
   // General Loading/Error states
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Biểu đồ đang được phóng to toàn màn hình (null = không có)
+  const [expandedChart, setExpandedChart] = useState<{ title: string; option: any } | null>(null);
+
+  // Đóng modal phóng to bằng phím Esc + khóa cuộn trang nền khi đang mở
+  useEffect(() => {
+    if (!expandedChart) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpandedChart(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [expandedChart]);
+
   // Map chart ref (for resetting zoom/pan reliably)
   const mapRef = useRef<any>(null);
+  // Ref tới khung đề xuất để cuộn tới khi xem lại một phiên nhật ký
+  const proposalRef = useRef<HTMLDivElement>(null);
 
   // Fetch Overview Data on mount
   useEffect(() => {
@@ -227,6 +260,19 @@ function App() {
     ];
   }, [stations]);
 
+  // Nhiệt độ TB theo năm (dùng chung cho insight text và biểu đồ xu hướng năm)
+  const yearlyTempTrend = useMemo<{ x: number; y: number }[]>(() => {
+    const matrix = explorerData?.heatmap_matrix || [];
+    if (!matrix.length) return [];
+    const byYear: Record<number, number[]> = {};
+    matrix.forEach((h: any) => {
+      (byYear[h.year_val] ||= []).push(h.avg_temp);
+    });
+    return Object.entries(byYear)
+      .map(([y, arr]) => ({ x: Number(y), y: arr.reduce((a, v) => a + v, 0) / arr.length }))
+      .sort((a, b) => a.x - b.x);
+  }, [explorerData]);
+
   const explorerInsights = useMemo<string[]>(() => {
     if (!explorerData?.monthly_trends?.length) return [];
     const mt = explorerData.monthly_trends;
@@ -235,28 +281,17 @@ function App() {
     const out = [
       `Tháng nóng nhất là Tháng ${hotMonth.month_num} (${hotMonth.avg_temp}°C TB); mùa mưa đỉnh điểm vào Tháng ${rainMonth.month_num} (~${Math.round(rainMonth.avg_rain)} mm).`,
     ];
-    // Xu hướng ấm lên theo năm từ ma trận Tháng × Năm
-    const matrix = explorerData.heatmap_matrix || [];
-    if (matrix.length) {
-      const byYear: Record<number, number[]> = {};
-      matrix.forEach((h: any) => {
-        (byYear[h.year_val] ||= []).push(h.avg_temp);
-      });
-      const yearly = Object.entries(byYear)
-        .map(([y, arr]) => ({ x: Number(y), y: arr.reduce((a, v) => a + v, 0) / arr.length }))
-        .sort((a, b) => a.x - b.x);
-      if (yearly.length >= 2) {
-        const slope = linearSlope(yearly);
-        const first = yearly[0];
-        const last = yearly[yearly.length - 1];
-        const dir = slope >= 0 ? "tăng" : "giảm";
-        out.push(
-          `Nhiệt độ TB năm ${dir} khoảng ${Math.abs(slope).toFixed(2)}°C/năm (${first.y.toFixed(1)}°C năm ${first.x} → ${last.y.toFixed(1)}°C năm ${last.x}), phản ánh xu hướng ấm lên.`,
-        );
-      }
+    if (yearlyTempTrend.length >= 2) {
+      const slope = linearSlope(yearlyTempTrend);
+      const first = yearlyTempTrend[0];
+      const last = yearlyTempTrend[yearlyTempTrend.length - 1];
+      const dir = slope >= 0 ? "tăng" : "giảm";
+      out.push(
+        `Nhiệt độ TB năm ${dir} khoảng ${Math.abs(slope).toFixed(2)}°C/năm (${first.y.toFixed(1)}°C năm ${first.x} → ${last.y.toFixed(1)}°C năm ${last.x}), phản ánh xu hướng ấm lên.`,
+      );
     }
     return out;
-  }, [explorerData]);
+  }, [explorerData, yearlyTempTrend]);
 
   const extremeInsights = useMemo<string[]>(() => {
     if (!extremeData) return [];
@@ -363,6 +398,8 @@ function App() {
       })
       .then((data) => {
         setAiExecResults(data.results);
+        applyChartSuggestion(data.results, currentProposal?.chart ?? null);
+        setResultView("table");
         setCurrentProposal((prev) => (prev ? { ...prev, status: "executed" } : null));
         setAiExecLoading(false);
         fetchLogs();
@@ -389,6 +426,25 @@ function App() {
     setAiQuestion(qText);
   };
 
+  // Xem lại một phiên nhật ký: nạp câu hỏi/code/giải thích vào khung đề xuất để chạy lại
+  const handleViewLog = (logRow: AILog) => {
+    const restored: Proposal = {
+      id: logRow.session_id,
+      question: logRow.question,
+      code: logRow.sql_code,
+      explanation: logRow.explanation,
+      kind: (logRow.kind as AnalysisKind) || "sql",
+      chart: null,
+      status: "draft",
+    };
+    setAiKind(restored.kind);
+    setCurrentProposal(restored);
+    setProposalSql(restored.code);
+    setAiExecResults(null);
+    setAiError(null);
+    setTimeout(() => proposalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
   const fetchLogs = () => {
     setLogsLoading(true);
     fetch(`${API_BASE_URL}/api/ai/logs?limit=100`)
@@ -398,6 +454,7 @@ function App() {
       })
       .then((data) => {
         setAiLogs(data);
+        setLogPage(1);
         setLogsLoading(false);
       })
       .catch((err) => {
@@ -410,6 +467,181 @@ function App() {
   useEffect(() => {
     if (activeTab === "ai") fetchLogs();
   }, [activeTab]);
+
+  // ============================================================
+  //  Sinh biểu đồ từ kết quả AI (Phase A: frontend tự dựng)
+  // ============================================================
+  const isNumericColumn = (rows: any[], col: string) =>
+    rows.length > 0 && rows.every((r) => r[col] === null || typeof r[col] === "number");
+
+  const initChartAxes = (rows: any[]) => {
+    if (!rows || rows.length === 0) {
+      setChartX("");
+      setChartY("");
+      return;
+    }
+    const cols = Object.keys(rows[0]);
+    const numeric = cols.filter((c) => isNumericColumn(rows, c));
+    const categorical = cols.filter((c) => !numeric.includes(c));
+    const x = categorical[0] || cols[0];
+    const y = numeric.find((c) => c !== x) || numeric[0] || cols[1] || cols[0];
+    setChartX(x);
+    setChartY(y);
+    setChartType(numeric.length >= 2 && categorical.length === 0 ? "scatter" : "bar");
+  };
+
+  // Ưu tiên biểu đồ AI gợi ý nếu hợp lệ, nếu không thì tự suy ra
+  const applyChartSuggestion = (rows: any[], suggestion: ChartSpec | null) => {
+    if (rows && rows.length > 0 && suggestion) {
+      const cols = Object.keys(rows[0]);
+      if (cols.includes(suggestion.x) && cols.includes(suggestion.y)) {
+        setChartType(suggestion.type);
+        setChartX(suggestion.x);
+        setChartY(suggestion.y);
+        return;
+      }
+    }
+    initChartAxes(rows);
+  };
+
+  const getResultChartOption = () => {
+    const rows = aiExecResults || [];
+    if (!rows.length || !chartX || !chartY) return {};
+    const capped = rows.slice(0, 100);
+
+    if (chartType === "pie") {
+      return {
+        tooltip: { ...tooltipStyle, trigger: "item" },
+        legend: { ...legendStyle, type: "scroll", bottom: 0 },
+        series: [
+          {
+            type: "pie",
+            radius: ["38%", "68%"],
+            center: ["50%", "46%"],
+            data: capped.map((r) => ({ name: String(r[chartX]), value: r[chartY] })),
+            label: { color: PALETTE.ink, fontFamily: SANS_FONT },
+          },
+        ],
+      };
+    }
+
+    if (chartType === "scatter") {
+      // Scatter cần trục số; nếu X là cột phân loại (chữ) thì dùng trục category
+      const xIsNumeric = isNumericColumn(capped, chartX);
+      return {
+        tooltip: { ...tooltipStyle, trigger: "item" },
+        grid: { left: 70, right: 30, top: 24, bottom: 60 },
+        xAxis: {
+          type: xIsNumeric ? "value" : "category",
+          data: xIsNumeric ? undefined : capped.map((r) => String(r[chartX])),
+          name: humanizeColumn(chartX),
+          nameLocation: "middle",
+          nameGap: 34,
+          nameTextStyle,
+          axisLabel,
+          axisLine: axisLineSoft,
+          splitLine: splitLineSoft,
+        },
+        yAxis: {
+          type: "value",
+          name: humanizeColumn(chartY),
+          nameLocation: "middle",
+          nameGap: 52,
+          nameTextStyle,
+          axisLabel,
+          axisLine: axisLineSoft,
+          splitLine: splitLineSoft,
+        },
+        series: [
+          {
+            type: "scatter",
+            symbolSize: 11,
+            itemStyle: { color: PALETTE.clay, opacity: 0.75 },
+            data: capped.map((r) => [xIsNumeric ? r[chartX] : String(r[chartX]), r[chartY]]),
+          },
+        ],
+      };
+    }
+
+    // bar / line
+    return {
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      grid: { left: 76, right: 24, top: 36, bottom: 70 },
+      xAxis: {
+        type: "category",
+        data: capped.map((r) => String(r[chartX])),
+        name: humanizeColumn(chartX),
+        nameLocation: "middle",
+        nameGap: 44,
+        nameTextStyle,
+        axisLabel: { ...axisLabel, rotate: capped.length > 8 ? 40 : 0 },
+        axisLine: axisLineSoft,
+      },
+      yAxis: {
+        type: "value",
+        name: humanizeColumn(chartY),
+        nameLocation: "middle",
+        nameGap: 56,
+        nameTextStyle,
+        axisLabel,
+        axisLine: axisLineSoft,
+        splitLine: splitLineSoft,
+      },
+      series: [
+        {
+          type: chartType,
+          smooth: chartType === "line",
+          data: capped.map((r) => r[chartY]),
+          itemStyle: { color: PALETTE.clay },
+          areaStyle: chartType === "line" ? { opacity: 0.12 } : undefined,
+        },
+      ],
+    };
+  };
+
+  // Thẻ biểu đồ dùng chung cho lưới 2×2 — kèm nút phóng to toàn màn hình
+  const renderChartCard = (
+    title: string,
+    option: any,
+    ready: boolean,
+    opts?: { span2?: boolean; onEvents?: any; notMerge?: boolean; placeholder?: string; caption?: string; height?: number },
+  ) => {
+    const height = opts?.height ?? 340;
+    return (
+      <div className={`panel chart-card reveal ${opts?.span2 ? "span-2" : ""}`} key={title}>
+        <div className="chart-card__head">
+          <div>
+            <span className="panel__label" style={{ margin: 0 }}>{title}</span>
+            {opts?.caption && <span className="chart-card__caption">{opts.caption}</span>}
+          </div>
+          <button
+            type="button"
+            className="chart-expand-btn"
+            title="Phóng to biểu đồ"
+            aria-label={`Phóng to ${title}`}
+            onClick={() => setExpandedChart({ title, option })}
+            disabled={!ready}
+          >
+            <Icon name="expand" size={14} />
+          </button>
+        </div>
+        <div className="chart-wrap" style={{ height }}>
+          {ready ? (
+            <ReactECharts
+              option={option}
+              style={{ height: "100%", width: "100%" }}
+              onEvents={opts?.onEvents}
+              notMerge={opts?.notMerge}
+            />
+          ) : (
+            <div className="chart-placeholder" style={{ height: "100%" }}>
+              {opts?.placeholder || "Đang dựng biểu đồ…"}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderInsights = (items: string[]) => {
     if (!items.length) return null;
@@ -562,6 +794,7 @@ function App() {
       yAxis: {
         type: "value",
         name: "°C",
+        scale: true,
         axisLabel,
         nameTextStyle,
         splitLine: splitLineSoft,
@@ -643,6 +876,33 @@ function App() {
     };
   };
 
+  // 4b. Xu hướng nhiệt độ trung bình theo năm
+  const getYearlyTempTrendOption = () => {
+    if (!yearlyTempTrend.length) return {};
+    return {
+      tooltip: { ...tooltipStyle, trigger: "axis", formatter: (p: any) => `Năm ${p[0].axisValue}<br/><strong>${p[0].data}°C</strong>` },
+      grid: { left: 52, right: 24, top: 24, bottom: 40 },
+      xAxis: {
+        type: "category",
+        data: yearlyTempTrend.map((p) => String(p.x)),
+        axisLabel,
+        axisLine: axisLineSoft,
+      },
+      yAxis: { type: "value", name: "°C", scale: true, nameTextStyle, axisLabel, axisLine: axisLineSoft, splitLine: splitLineSoft },
+      series: [
+        {
+          type: "line",
+          smooth: true,
+          symbolSize: 8,
+          data: yearlyTempTrend.map((p) => Number(p.y.toFixed(2))),
+          lineStyle: { color: PALETTE.clay, width: 3 },
+          itemStyle: { color: PALETTE.clay },
+          areaStyle: { opacity: 0.1, color: PALETTE.clay },
+        },
+      ],
+    };
+  };
+
   // 5. Pearson correlation matrix
   const getCorrOption = () => {
     if (!relationshipData || !relationshipData.correlation_matrix) return {};
@@ -714,29 +974,104 @@ function App() {
       legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
       grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
       xAxis: { type: "value", name: "Bức xạ (MJ/m²)", axisLabel, nameTextStyle, splitLine: splitLineSoft },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
       series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
+    };
+  };
+
+  // 6b. Vĩ độ vs nhiệt độ trung bình — càng ra Bắc càng lạnh?
+  const getLatTempScatterOption = () => {
+    if (!relationshipData?.scatter_sample || !stations.length) return {};
+    const latByLocation: Record<string, number> = {};
+    stations.forEach((s) => { latByLocation[s.location] = s.latitude; });
+
+    const byRegion = { North: [] as any[], Central: [] as any[], South: [] as any[] };
+    relationshipData.scatter_sample.forEach((s: any) => {
+      const lat = latByLocation[s.location];
+      if (lat === undefined) return;
+      const bucket = byRegion[s.region as keyof typeof byRegion];
+      if (bucket) bucket.push([lat, s.temperature_2m_mean]);
+    });
+
+    const mkSeries = (region: keyof typeof byRegion, label: string) => ({
+      name: label,
+      type: "scatter",
+      data: byRegion[region],
+      color: REGION_COLORS[region],
+      symbolSize: 7,
+      itemStyle: { opacity: 0.62 },
+    });
+
+    return {
+      tooltip: {
+        ...tooltipStyle,
+        trigger: "item",
+        formatter: (p: any) => `${p.seriesName}<br/>Vĩ độ: ${p.value[0]}°<br/>Nhiệt độ: ${p.value[1]}°C`,
+      },
+      legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
+      grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
+      xAxis: { type: "value", name: "Vĩ độ (°)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
+    };
+  };
+
+  // 6c. Phân bố nhiệt độ theo miền (box plot — thấy được độ trải, không chỉ trung bình)
+  const getRegionBoxplotOption = () => {
+    if (!relationshipData?.scatter_sample?.length) return {};
+    const regions: (keyof typeof REGION_COLORS)[] = ["North", "Central", "South"];
+    const regionLabels = ["Miền Bắc", "Miền Trung", "Miền Nam"];
+    const raw = regions.map((r) =>
+      relationshipData.scatter_sample
+        .filter((s: any) => s.region === r)
+        .map((s: any) => s.temperature_2m_mean),
+    );
+    if (raw.some((arr) => arr.length === 0)) return {};
+
+    const { boxData, outliers } = prepareBoxplotData(raw);
+
+    return {
+      tooltip: { ...tooltipStyle, trigger: "item" },
+      grid: { left: 14, right: 20, top: 24, bottom: 14, containLabel: true },
+      xAxis: { type: "category", data: regionLabels, axisLabel, axisLine: axisLineSoft, boundaryGap: true },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      series: [
+        {
+          name: "Phân bố nhiệt độ",
+          type: "boxplot",
+          data: boxData,
+          itemStyle: { color: "#e7efe7", borderColor: PALETTE.forest, borderWidth: 1.6 },
+        },
+        {
+          name: "Giá trị ngoại lệ",
+          type: "scatter",
+          data: outliers,
+          symbolSize: 6,
+          itemStyle: { color: PALETTE.clay, opacity: 0.55 },
+        },
+      ],
     };
   };
 
   // 7. Extreme events bar chart
   const getExtremeChartOption = () => {
     if (!extremeData || !extremeData.counts_by_location) return {};
-    const topData = extremeData.counts_by_location;
+    const isAll = extremeLocFilter === "All";
+    // Khi xem "tất cả", chỉ hiện Top 10 trạm cực đoan nhất (dữ liệu đã sort sẵn từ backend)
+    // để tránh nhồi 28 nhãn trạm + thanh cuộn vào một thẻ nhỏ trong lưới 2×2.
+    const topData = isAll ? extremeData.counts_by_location.slice(0, 10) : extremeData.counts_by_location;
     const locations = topData.map((c: any) => STATION_VI[c.location] || c.location);
     const hotDays = topData.map((c: any) => c.hot_days_count);
     const wetDays = topData.map((c: any) => c.wet_days_count);
 
-    const isAll = extremeLocFilter === "All";
-
-    const option: any = {
+    return {
       tooltip: { ...tooltipStyle, trigger: "axis" },
       legend: { ...legendStyle, data: ["Nắng nóng (≥38°C)", "Mưa lớn (≥100mm)"], top: 0 },
-      grid: { left: 10, right: 18, top: 44, bottom: isAll ? 65 : 45, containLabel: true },
+      grid: { left: 10, right: 18, top: 44, bottom: isAll ? 54 : 20, containLabel: true },
       xAxis: {
         type: "category",
         data: locations,
-        axisLabel: { ...axisLabel, interval: 0, rotate: isAll ? 30 : 0 },
+        axisLabel: { ...axisLabel, interval: 0, rotate: isAll ? 26 : 0 },
         axisLine: axisLineSoft,
       },
       yAxis: {
@@ -752,7 +1087,7 @@ function App() {
           type: "bar",
           data: hotDays,
           color: PALETTE.clay,
-          barWidth: isAll ? "30%" : "20%",
+          barWidth: "28%",
           itemStyle: { borderRadius: [4, 4, 0, 0] },
         },
         {
@@ -760,41 +1095,132 @@ function App() {
           type: "bar",
           data: wetDays,
           color: PALETTE.sky,
-          barWidth: isAll ? "30%" : "20%",
+          barWidth: "28%",
           itemStyle: { borderRadius: [4, 4, 0, 0] },
         },
       ],
     };
+  };
 
-    if (isAll) {
-      option.dataZoom = [
+  // Bản đồ điểm nóng cực đoan — kích thước điểm theo tổng số ngày vượt ngưỡng
+  const getExtremeMapOption = () => {
+    const counts = extremeData?.counts_by_location || [];
+    if (!counts.length || !stations.length) return {};
+
+    const byLocation: Record<string, StationOverview> = {};
+    stations.forEach((s) => { byLocation[s.location] = s; });
+
+    const points = counts
+      .map((c: any) => {
+        const s = byLocation[c.location];
+        if (!s) return null;
+        const total = (c.hot_days_count || 0) + (c.wet_days_count || 0);
+        return {
+          name: c.location,
+          value: [s.longitude, s.latitude, total, c.hot_days_count, c.wet_days_count],
+        };
+      })
+      .filter(Boolean);
+
+    const maxTotal = Math.max(1, ...points.map((p: any) => p.value[2]));
+
+    return {
+      tooltip: {
+        ...tooltipStyle,
+        trigger: "item",
+        formatter: (p: any) =>
+          `<strong>${STATION_VI[p.name] || p.name}</strong><br/>Nắng nóng: ${p.value[3]} ngày<br/>Mưa lớn: ${p.value[4]} ngày`,
+      },
+      geo: {
+        map: "vietnam",
+        roam: true,
+        scaleLimit: { min: 1, max: 8 },
+        top: 10,
+        bottom: 10,
+        label: { show: false },
+        itemStyle: { areaColor: "#D9E6D3", borderColor: "#7E9B76", borderWidth: 1.3 },
+        emphasis: { disabled: true },
+      },
+      series: [
         {
-          type: "slider",
-          show: true,
-          xAxisIndex: [0],
-          start: 0,
-          end: 35,
-          bottom: 10,
-          height: 18,
-          borderColor: "transparent",
-          fillerColor: "rgba(46, 111, 78, 0.12)",
-          handleIcon: "path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
-          handleSize: "120%",
-          handleStyle: {
-            color: "var(--forest)",
-            shadowBlur: 3,
-            shadowColor: "rgba(0, 0, 0, 0.15)",
+          type: "scatter",
+          coordinateSystem: "geo",
+          data: points,
+          symbolSize: (val: number[]) => 12 + (val[2] / maxTotal) * 28,
+          itemStyle: {
+            color: PALETTE.clay,
+            opacity: 0.75,
+            borderColor: PALETTE.surface,
+            borderWidth: 1.5,
+            shadowColor: "rgba(40,50,30,0.30)",
+            shadowBlur: 5,
           },
-          textStyle: {
-            color: "var(--ink-soft)",
-            fontFamily: SANS_FONT,
-            fontSize: 9,
-          },
+          emphasis: { scale: 1.2 },
         },
-      ];
-    }
+      ],
+    };
+  };
 
-    return option;
+  // Xu hướng ngày cực đoan theo năm
+  const getExtremeYearlyOption = () => {
+    const rows = extremeData?.counts_by_year || [];
+    if (!rows.length) return {};
+    return {
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      legend: { ...legendStyle, data: ["Nắng nóng", "Mưa lớn"], top: 0 },
+      grid: { left: 10, right: 18, top: 44, bottom: 10, containLabel: true },
+      xAxis: { type: "category", data: rows.map((r: any) => String(r.year_val)), axisLabel, axisLine: axisLineSoft },
+      yAxis: { type: "value", name: "Số ngày", axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      series: [
+        {
+          name: "Nắng nóng",
+          type: "line",
+          smooth: true,
+          data: rows.map((r: any) => r.hot_days_count),
+          lineStyle: { color: PALETTE.clay, width: 3 },
+          itemStyle: { color: PALETTE.clay },
+        },
+        {
+          name: "Mưa lớn",
+          type: "line",
+          smooth: true,
+          data: rows.map((r: any) => r.wet_days_count),
+          lineStyle: { color: PALETTE.sky, width: 3 },
+          itemStyle: { color: PALETTE.sky },
+        },
+      ],
+    };
+  };
+
+  // Phân bố ngày cực đoan theo tháng (tính mùa vụ)
+  const getExtremeMonthlyOption = () => {
+    const rows = extremeData?.counts_by_month || [];
+    if (!rows.length) return {};
+    return {
+      tooltip: { ...tooltipStyle, trigger: "axis" },
+      legend: { ...legendStyle, data: ["Nắng nóng", "Mưa lớn"], top: 0 },
+      grid: { left: 10, right: 18, top: 44, bottom: 10, containLabel: true },
+      xAxis: { type: "category", data: rows.map((r: any) => `Th${r.month_val}`), axisLabel, axisLine: axisLineSoft },
+      yAxis: { type: "value", name: "Số ngày", axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      series: [
+        {
+          name: "Nắng nóng",
+          type: "bar",
+          data: rows.map((r: any) => r.hot_days_count),
+          color: PALETTE.clay,
+          barWidth: "28%",
+          itemStyle: { borderRadius: [4, 4, 0, 0] },
+        },
+        {
+          name: "Mưa lớn",
+          type: "bar",
+          data: rows.map((r: any) => r.wet_days_count),
+          color: PALETTE.sky,
+          barWidth: "28%",
+          itemStyle: { borderRadius: [4, 4, 0, 0] },
+        },
+      ],
+    };
   };
 
   // ============================================================
@@ -976,53 +1402,27 @@ function App() {
                   <div className="filters">
                     <label className="field">
                       <span>Trạm đo</span>
-                      <select
-                        className="select"
+                      <Select
+                        ariaLabel="Trạm đo"
                         value={explorerLocation}
-                        onChange={(e) => setExplorerLocation(e.target.value)}
-                      >
-                        <option value="All">Tất cả trạm</option>
-                        {stations.map((s) => (
-                          <option key={s.location} value={s.location}>
-                            {STATION_VI[s.location] || s.location} ({REGION_VI[s.region]})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setExplorerLocation}
+                        options={[
+                          { value: "All", label: "Tất cả trạm" },
+                          ...stations.map((s) => ({
+                            value: s.location,
+                            label: `${STATION_VI[s.location] || s.location} (${REGION_VI[s.region]})`,
+                          })),
+                        ]}
+                      />
                     </label>
                   </div>
                 </header>
 
-                <div className="grid-2">
-                  <div className="panel chart-card reveal" style={stagger(0)}>
-                    <span className="panel__label">Chu kỳ nhiệt độ theo tháng</span>
-                    <div className="chart-wrap">
-                      {explorerData ? (
-                        <ReactECharts option={getTempTrendOption()} style={{ height: "300px" }} />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 300 }}>Đang dựng biểu đồ…</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="panel chart-card reveal" style={stagger(1)}>
-                    <span className="panel__label">Lượng mưa trung bình theo tháng</span>
-                    <div className="chart-wrap">
-                      {explorerData ? (
-                        <ReactECharts option={getRainTrendOption()} style={{ height: "300px" }} />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 300 }}>Đang dựng biểu đồ…</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="panel chart-card span-2 reveal" style={stagger(2)}>
-                    <span className="panel__label">Heatmap mùa vụ · nhiệt độ trung bình (Tháng × Năm)</span>
-                    <div className="chart-wrap">
-                      {explorerData ? (
-                        <ReactECharts option={getHeatmapOption()} style={{ height: "360px" }} />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 360 }}>Đang dựng heatmap…</div>
-                      )}
-                    </div>
-                  </div>
+                <div className="chart-grid-2x2">
+                  {renderChartCard("Chu kỳ nhiệt độ theo tháng", getTempTrendOption(), !!explorerData, { height: 300 })}
+                  {renderChartCard("Lượng mưa trung bình theo tháng", getRainTrendOption(), !!explorerData, { height: 300 })}
+                  {renderChartCard("Xu hướng nhiệt độ trung bình theo năm", getYearlyTempTrendOption(), yearlyTempTrend.length > 0, { height: 300 })}
+                  {renderChartCard("Heatmap mùa vụ · nhiệt độ TB (Tháng × Năm)", getHeatmapOption(), !!explorerData, { height: 300 })}
                 </div>
 
                 {renderInsights(explorerInsights)}
@@ -1038,18 +1438,18 @@ function App() {
                   <div className="filters" style={{ marginTop: 22 }}>
                     <label className="field">
                       <span>Địa điểm</span>
-                      <select
-                        className="select"
+                      <Select
+                        ariaLabel="Địa điểm"
                         value={extremeLocFilter}
-                        onChange={(e) => setExtremeLocFilter(e.target.value)}
-                      >
-                        <option value="All">Tất cả địa điểm</option>
-                        {stations.map((s) => (
-                          <option key={s.location} value={s.location}>
-                            {STATION_VI[s.location] || s.location}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setExtremeLocFilter}
+                        options={[
+                          { value: "All", label: "Tất cả địa điểm" },
+                          ...stations.map((s) => ({
+                            value: s.location,
+                            label: STATION_VI[s.location] || s.location,
+                          })),
+                        ]}
+                      />
                     </label>
                     <div className="range-field">
                       <div className="range-field__top">
@@ -1094,61 +1494,36 @@ function App() {
                   </div>
                 </section>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "22px" }}>
-                  <div className="panel chart-card reveal" style={stagger(0)}>
-                    <span className="panel__label">So sánh ngày thời tiết cực đoan giữa các trạm đo</span>
-                    <div className="chart-wrap">
-                      {extremeData ? (
-                        <ReactECharts
-                          option={getExtremeChartOption()}
-                          style={{ height: "360px" }}
-                          onEvents={{ click: onExtremeChartClick }}
-                          notMerge={true}
-                        />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 360 }}>Đang dựng biểu đồ…</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="panel reveal" style={stagger(1)}>
-                    <span className="panel__label">Nhật ký các ngày vượt ngưỡng lọc</span>
-                    <div className="ledger">
-                      <div>
-                        <div className="ledger__head">
-                          <Icon name="thermometer" size={18} className="ic-hot" />
-                          Nắng nóng (Tìm thấy {extremeData?.total_hot_count ?? 0} ngày)
-                        </div>
-                        <div className="scroll" style={{ maxHeight: "320px" }}>
-                          {extremeData?.hot_days.slice(0, 30).map((h: any, idx: number) => (
-                            <div className="entry" key={idx}>
-                              <span className="entry__date">{h.date}</span>
-                              <span className="entry__loc">{STATION_VI[h.location] || h.location}</span>
-                              <span className="entry__val is-hot">{h.temperature_2m_max}°C</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="ledger__head">
-                          <Icon name="droplet" size={18} className="ic-rain" />
-                          Mưa lớn (Tìm thấy {extremeData?.total_wet_count ?? 0} ngày)
-                        </div>
-                        <div className="scroll" style={{ maxHeight: "320px" }}>
-                          {extremeData?.wet_days.slice(0, 30).map((w: any, idx: number) => (
-                            <div className="entry" key={idx}>
-                              <span className="entry__date">{w.date}</span>
-                              <span className="entry__loc">{STATION_VI[w.location] || w.location}</span>
-                              <span className="entry__val is-rain">{w.precipitation_sum} mm</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p style={{ fontSize: "0.76rem", color: "var(--ink-faint)", marginTop: 16, fontStyle: "italic" }}>
-                      * Danh sách trên hiển thị tối đa 30 ngày có giá trị cực đoan nhất.
-                    </p>
-                  </div>
+                <div className="chart-grid-2x2">
+                  {renderChartCard(
+                    "So sánh ngày cực đoan giữa các trạm",
+                    getExtremeChartOption(),
+                    !!extremeData,
+                    {
+                      onEvents: { click: onExtremeChartClick },
+                      notMerge: true,
+                      height: 420,
+                      caption: extremeLocFilter === "All" ? "Top 10 trạm cực đoan nhất" : undefined,
+                    },
+                  )}
+                  {renderChartCard(
+                    "Bản đồ điểm nóng thời tiết cực đoan",
+                    getExtremeMapOption(),
+                    !!(extremeData && stations.length),
+                    { caption: "Kích thước điểm = tổng số ngày vượt ngưỡng", placeholder: "Đang dựng bản đồ…", height: 420 },
+                  )}
+                  {renderChartCard(
+                    "Xu hướng ngày cực đoan theo năm",
+                    getExtremeYearlyOption(),
+                    !!extremeData?.counts_by_year?.length,
+                    { height: 300 },
+                  )}
+                  {renderChartCard(
+                    "Phân bố ngày cực đoan theo tháng",
+                    getExtremeMonthlyOption(),
+                    !!extremeData?.counts_by_month?.length,
+                    { height: 300 },
+                  )}
                 </div>
 
                 {renderInsights(extremeInsights)}
@@ -1163,27 +1538,16 @@ function App() {
                   <h1 className="display">Tương quan &amp; quan hệ đa biến</h1>
                 </header>
 
-                <div className="grid-2">
-                  <div className="panel chart-card reveal" style={stagger(0)}>
-                    <span className="panel__label">Ma trận tương quan Pearson</span>
-                    <div className="chart-wrap">
-                      {relationshipData ? (
-                        <ReactECharts option={getCorrOption()} style={{ height: "380px" }} />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 380 }}>Đang tính hệ số tương quan…</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="panel chart-card reveal" style={stagger(1)}>
-                    <span className="panel__label">Bức xạ mặt trời vs nhiệt độ trung bình ngày</span>
-                    <div className="chart-wrap">
-                      {relationshipData ? (
-                        <ReactECharts option={getScatterOption()} style={{ height: "380px" }} />
-                      ) : (
-                        <div className="chart-placeholder" style={{ height: 380 }}>Đang tải biểu đồ phân tán…</div>
-                      )}
-                    </div>
-                  </div>
+                <div className="chart-grid-2x2">
+                  {renderChartCard("Ma trận tương quan Pearson", getCorrOption(), !!relationshipData, { placeholder: "Đang tính hệ số tương quan…", height: 380 })}
+                  {renderChartCard("Bức xạ mặt trời vs nhiệt độ TB ngày", getScatterOption(), !!relationshipData, { placeholder: "Đang tải biểu đồ phân tán…", height: 380 })}
+                  {renderChartCard(
+                    "Vĩ độ vs nhiệt độ TB — càng ra Bắc càng lạnh?",
+                    getLatTempScatterOption(),
+                    !!(relationshipData && stations.length),
+                    { placeholder: "Đang tải biểu đồ phân tán…", height: 380 },
+                  )}
+                  {renderChartCard("Phân bố nhiệt độ theo miền", getRegionBoxplotOption(), !!relationshipData, { placeholder: "Đang tính phân bố…", height: 380 })}
                 </div>
 
                 {renderInsights(relationshipInsights)}
@@ -1212,14 +1576,14 @@ function App() {
                         className={`mode-toggle__btn ${aiKind === "sql" ? "is-active" : ""}`}
                         onClick={() => setAiKind("sql")}
                       >
-                        SQL (DuckDB)
+                        SQL
                       </button>
                       <button
                         type="button"
                         className={`mode-toggle__btn ${aiKind === "python" ? "is-active" : ""}`}
                         onClick={() => setAiKind("python")}
                       >
-                        Python (pandas)
+                        Python
                       </button>
                     </div>
                     <form onSubmit={handleAskAI} className="ask__form">
@@ -1282,7 +1646,7 @@ function App() {
                   )}
 
                   {currentProposal && (
-                    <div className="panel proposal">
+                    <div className="panel proposal" ref={proposalRef}>
                       <div className="proposal__top">
                         <span className={`status-badge ${currentProposal.status === "executed" ? "is-executed" : ""}`}>
                           {currentProposal.status.toUpperCase()}
@@ -1328,33 +1692,99 @@ function App() {
 
                   {aiExecResults && (
                     <div className="panel results">
-                      <span className="panel__label">Kết quả truy vấn cục bộ</span>
+                      <div className="proposal__top">
+                        <span className="panel__label" style={{ margin: 0 }}>Kết quả truy vấn cục bộ</span>
+                        <div className="mode-toggle">
+                          <button
+                            type="button"
+                            className={`mode-toggle__btn ${resultView === "table" ? "is-active" : ""}`}
+                            onClick={() => setResultView("table")}
+                          >
+                            Bảng
+                          </button>
+                          <button
+                            type="button"
+                            className={`mode-toggle__btn ${resultView === "chart" ? "is-active" : ""}`}
+                            onClick={() => setResultView("chart")}
+                          >
+                            Biểu đồ
+                          </button>
+                        </div>
+                      </div>
                       <p className="results__count">
                         Trả về <b>{aiExecResults.length}</b> dòng dữ liệu
                       </p>
-                      <div className="table-scroll">
-                        <table className="table">
-                          <thead>
-                            <tr>
-                              {Object.keys(aiExecResults[0] || {}).map((col) => (
-                                <th key={col}>{col}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {aiExecResults.slice(0, 15).map((row, idx) => (
-                              <tr key={idx}>
-                                {Object.values(row).map((val: any, vIdx) => (
-                                  <td key={vIdx}>{typeof val === "number" ? val.toFixed(2) : String(val)}</td>
+
+                      {resultView === "table" ? (
+                        <div className="table-scroll">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                {Object.keys(aiExecResults[0] || {}).map((col) => (
+                                  <th key={col} title={col}>{humanizeColumn(col)}</th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {aiExecResults.length > 15 && (
-                          <p className="table-hint">… chỉ hiển thị 15 dòng đầu tiên.</p>
-                        )}
-                      </div>
+                            </thead>
+                            <tbody>
+                              {aiExecResults.slice(0, 15).map((row, idx) => (
+                                <tr key={idx}>
+                                  {Object.values(row).map((val: any, vIdx) => (
+                                    <td key={vIdx}>{typeof val === "number" ? val.toFixed(2) : String(val)}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {aiExecResults.length > 15 && (
+                            <p className="table-hint">… chỉ hiển thị 15 dòng đầu tiên.</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="chart-builder">
+                          <div className="chart-controls">
+                            <label className="field">
+                              <span>Loại biểu đồ</span>
+                              <Select
+                                ariaLabel="Loại biểu đồ"
+                                value={chartType}
+                                onChange={(v) => setChartType(v as ChartType)}
+                                options={[
+                                  { value: "bar", label: "Cột" },
+                                  { value: "line", label: "Đường" },
+                                  { value: "pie", label: "Tròn" },
+                                  { value: "scatter", label: "Phân tán" },
+                                ]}
+                              />
+                            </label>
+                            <label className="field">
+                              <span>{chartType === "pie" ? "Nhãn" : "Trục X"}</span>
+                              <Select
+                                ariaLabel="Trục X"
+                                value={chartX}
+                                onChange={setChartX}
+                                options={Object.keys(aiExecResults[0] || {}).map((col) => ({ value: col, label: humanizeColumn(col) }))}
+                              />
+                            </label>
+                            <label className="field">
+                              <span>{chartType === "pie" ? "Giá trị" : "Trục Y"}</span>
+                              <Select
+                                ariaLabel="Trục Y"
+                                value={chartY}
+                                onChange={setChartY}
+                                options={Object.keys(aiExecResults[0] || {}).map((col) => ({ value: col, label: humanizeColumn(col) }))}
+                              />
+                            </label>
+                          </div>
+                          <ReactECharts
+                            option={getResultChartOption()}
+                            style={{ height: "380px", width: "100%" }}
+                            notMerge={true}
+                          />
+                          {aiExecResults.length > 100 && (
+                            <p className="table-hint">… biểu đồ hiển thị 100 điểm dữ liệu đầu tiên.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1371,44 +1801,79 @@ function App() {
                     </div>
                     <p className="results__count">
                       Mọi yêu cầu, mã nguồn, giải thích và kết quả đều được lưu cục bộ.
+                      Bấm vào một dòng để xem lại và chạy lại phân tích đó.
                     </p>
                     {aiLogs.length === 0 ? (
                       <p className="table-hint">Chưa có phiên AI nào được ghi lại.</p>
                     ) : (
-                      <div className="table-scroll">
-                        <table className="table">
-                          <thead>
-                            <tr>
-                              <th>Thời gian (UTC)</th>
-                              <th>Trạng thái</th>
-                              <th>Câu hỏi</th>
-                              <th>Loại</th>
-                              <th>Mã nguồn</th>
-                              <th>Số dòng</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {aiLogs.map((logRow) => (
-                              <tr key={logRow.id}>
-                                <td>{logRow.timestamp.replace("T", " ").slice(0, 19)}</td>
-                                <td>
-                                  <span className={`status-badge ${logRow.status === "executed" ? "is-executed" : ""}`}>
-                                    {logRow.status.toUpperCase()}
-                                  </span>
-                                </td>
-                                <td>{logRow.question}</td>
-                                <td>
-                                  <span className="kind-badge">{(logRow.kind || "sql").toUpperCase()}</span>
-                                </td>
-                                <td>
-                                  <code className="log-sql">{logRow.sql_code || "—"}</code>
-                                </td>
-                                <td>{logRow.status === "executed" ? logRow.row_count : "—"}</td>
+                      <>
+                        <div className="table-scroll">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Thời gian (UTC)</th>
+                                <th>Trạng thái</th>
+                                <th>Câu hỏi</th>
+                                <th>Loại</th>
+                                <th>Mã nguồn</th>
+                                <th>Số dòng</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {aiLogs
+                                .slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE)
+                                .map((logRow) => (
+                                  <tr
+                                    key={logRow.id}
+                                    className="log-row"
+                                    onClick={() => handleViewLog(logRow)}
+                                    title="Bấm để xem lại phân tích này"
+                                  >
+                                    <td>{logRow.timestamp.replace("T", " ").slice(0, 19)}</td>
+                                    <td>
+                                      <span className={`status-badge ${logRow.status === "executed" ? "is-executed" : ""}`}>
+                                        {logRow.status.toUpperCase()}
+                                      </span>
+                                    </td>
+                                    <td>{logRow.question}</td>
+                                    <td>
+                                      <span className="kind-badge">{(logRow.kind || "sql").toUpperCase()}</span>
+                                    </td>
+                                    <td>
+                                      <code className="log-sql">{logRow.sql_code || "—"}</code>
+                                    </td>
+                                    <td>{logRow.status === "executed" ? logRow.row_count : "—"}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="pager">
+                          <button
+                            className="btn btn--ghost"
+                            onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+                            disabled={logPage <= 1}
+                          >
+                            ‹ Trước
+                          </button>
+                          <span className="pager__info">
+                            Trang {logPage} / {Math.max(1, Math.ceil(aiLogs.length / LOG_PAGE_SIZE))} ·{" "}
+                            {aiLogs.length} bản ghi
+                          </span>
+                          <button
+                            className="btn btn--ghost"
+                            onClick={() =>
+                              setLogPage((p) =>
+                                Math.min(Math.ceil(aiLogs.length / LOG_PAGE_SIZE), p + 1),
+                              )
+                            }
+                            disabled={logPage >= Math.ceil(aiLogs.length / LOG_PAGE_SIZE)}
+                          >
+                            Sau ›
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1417,6 +1882,27 @@ function App() {
           </>
         )}
       </main>
+
+      {expandedChart && (
+        <div className="chart-modal-backdrop" onClick={() => setExpandedChart(null)}>
+          <div className="chart-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="chart-modal__head">
+              <h3>{expandedChart.title}</h3>
+              <button
+                type="button"
+                className="chart-modal__close"
+                aria-label="Đóng"
+                onClick={() => setExpandedChart(null)}
+              >
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="chart-modal__body">
+              <ReactECharts option={expandedChart.option} style={{ height: "100%", width: "100%" }} notMerge={true} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

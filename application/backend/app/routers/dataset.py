@@ -87,12 +87,12 @@ def get_explorer(
     where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     
     query_monthly = f"""
-        SELECT 
+        SELECT
             month(date) as month_num,
             round(mean(temperature_2m_mean), 2) as avg_temp,
             round(mean(temperature_2m_max), 2) as avg_max_temp,
             round(mean(temperature_2m_min), 2) as avg_min_temp,
-            round(sum(precipitation_sum) / 6.0, 2) as avg_rain,
+            round(sum(precipitation_sum) / count(DISTINCT location || '_' || year(date)), 2) as avg_rain,
             round(mean(shortwave_radiation_sum), 2) as avg_radiation
         FROM climate_daily
         {where_str}
@@ -181,7 +181,7 @@ def get_extreme_events(
     where_counts_str = f"WHERE {' AND '.join(where_clauses_counts)}" if where_clauses_counts else ""
     
     query_counts = f"""
-        SELECT 
+        SELECT
             location,
             sum(CASE WHEN temperature_2m_max >= ? THEN 1 ELSE 0 END) as hot_days_count,
             sum(CASE WHEN precipitation_sum >= ? THEN 1 ELSE 0 END) as wet_days_count
@@ -190,10 +190,32 @@ def get_extreme_events(
         GROUP BY location
         ORDER BY hot_days_count DESC, wet_days_count DESC
     """
-    
+
+    query_by_year = f"""
+        SELECT
+            year(date) as year_val,
+            sum(CASE WHEN temperature_2m_max >= ? THEN 1 ELSE 0 END) as hot_days_count,
+            sum(CASE WHEN precipitation_sum >= ? THEN 1 ELSE 0 END) as wet_days_count
+        FROM climate_daily
+        {where_counts_str}
+        GROUP BY year_val
+        ORDER BY year_val
+    """
+
+    query_by_month = f"""
+        SELECT
+            month(date) as month_val,
+            sum(CASE WHEN temperature_2m_max >= ? THEN 1 ELSE 0 END) as hot_days_count,
+            sum(CASE WHEN precipitation_sum >= ? THEN 1 ELSE 0 END) as wet_days_count
+        FROM climate_daily
+        {where_counts_str}
+        GROUP BY month_val
+        ORDER BY month_val
+    """
+
     try:
         conn = get_db_connection()
-        
+
         cursor_hot = conn.execute(query_hot, params_temp)
         cols_hot = [desc[0] for desc in cursor_hot.description]
         hot_days = []
@@ -201,7 +223,7 @@ def get_extreme_events(
             d = dict(zip(cols_hot, row))
             d['date'] = d['date'].strftime('%Y-%m-%d')
             hot_days.append(d)
-            
+
         cursor_wet = conn.execute(query_wet, params_rain)
         cols_wet = [desc[0] for desc in cursor_wet.description]
         wet_days = []
@@ -209,23 +231,33 @@ def get_extreme_events(
             d = dict(zip(cols_wet, row))
             d['date'] = d['date'].strftime('%Y-%m-%d')
             wet_days.append(d)
-            
+
         cursor_counts = conn.execute(query_counts, params_counts)
         cols_counts = [desc[0] for desc in cursor_counts.description]
         counts = [dict(zip(cols_counts, row)) for row in cursor_counts.fetchall()]
-        
+
+        cursor_by_year = conn.execute(query_by_year, params_counts)
+        cols_by_year = [desc[0] for desc in cursor_by_year.description]
+        counts_by_year = [dict(zip(cols_by_year, row)) for row in cursor_by_year.fetchall()]
+
+        cursor_by_month = conn.execute(query_by_month, params_counts)
+        cols_by_month = [desc[0] for desc in cursor_by_month.description]
+        counts_by_month = [dict(zip(cols_by_month, row)) for row in cursor_by_month.fetchall()]
+
         # Calculate total matching count in the DB without LIMIT 100
         total_hot = conn.execute(f"SELECT count(*) FROM climate_daily {where_temp_str}", params_temp).fetchone()[0]
         total_wet = conn.execute(f"SELECT count(*) FROM climate_daily {where_rain_str}", params_rain).fetchone()[0]
 
         conn.close()
-        
+
         return {
             "hot_days": hot_days,
             "wet_days": wet_days,
             "total_hot_count": total_hot,
             "total_wet_count": total_wet,
-            "counts_by_location": counts
+            "counts_by_location": counts,
+            "counts_by_year": counts_by_year,
+            "counts_by_month": counts_by_month
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query failed: {e}")

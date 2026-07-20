@@ -18,12 +18,19 @@ class AnalysisRequest(BaseModel):
     kind: AnalysisKind = "sql"
 
 
+class ChartSpec(BaseModel):
+    type: Literal["bar", "line", "pie", "scatter"] = "bar"
+    x: str
+    y: str
+
+
 class AnalysisProposal(BaseModel):
     id: str
     question: str
     code: str
     explanation: str
     kind: AnalysisKind = "sql"
+    chart: ChartSpec | None = None
     status: ProposalStatus = ProposalStatus.DRAFT
 
 

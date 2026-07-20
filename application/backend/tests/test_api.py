@@ -40,6 +40,8 @@ def test_dataset_extreme_events() -> None:
     data = response.json()
     assert "hot_days" in data
     assert "wet_days" in data
+    assert len(data["counts_by_year"]) == 6
+    assert len(data["counts_by_month"]) == 12
 
 def test_dataset_relationship() -> None:
     response = client.get("/api/dataset/relationship")
@@ -57,6 +59,8 @@ def test_ai_analyst_flow() -> None:
     proposal_id = proposal["id"]
     assert proposal["status"] == ProposalStatus.DRAFT
     assert "SELECT" in proposal["code"]
+    # AI gợi ý biểu đồ kèm theo
+    assert proposal["chart"] and proposal["chart"]["x"] and proposal["chart"]["y"]
     
     # 2. Approve Proposal (Unsafe SQL should fail)
     unsafe_payload = {"code": "DROP TABLE climate_daily"}

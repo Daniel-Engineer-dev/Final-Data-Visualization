@@ -42,6 +42,7 @@ def create_proposal(request: AnalysisRequest) -> AnalysisProposal:
             code=ai_res.get("code", ""),
             explanation=ai_res.get("explanation", ""),
             kind=request.kind,
+            chart=ai_res.get("chart"),
             status=ProposalStatus.DRAFT
         )
 

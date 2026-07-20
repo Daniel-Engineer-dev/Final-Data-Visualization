@@ -111,28 +111,32 @@ YÊU CẦU BẮT BUỘC:
         if "lượng mưa" in q and "đà nẵng" in q and "hồ chí minh" in q:
             return {
                 "code": "SELECT location, month(date) as thang, AVG(precipitation_sum) as luong_mua_trung_binh\nFROM climate_daily\nWHERE location IN ('Da Nang', 'Ho Chi Minh City')\nGROUP BY location, thang\nORDER BY thang, location",
-                "explanation": "Truy vấn này tính lượng mưa trung bình theo từng tháng trong năm cho hai thành phố Đà Nẵng và TP. Hồ Chí Minh để so sánh đặc trưng mùa mưa."
+                "explanation": "Truy vấn này tính lượng mưa trung bình theo từng tháng trong năm cho hai thành phố Đà Nẵng và TP. Hồ Chí Minh để so sánh đặc trưng mùa mưa.",
+                "chart": {"type": "line", "x": "thang", "y": "luong_mua_trung_binh"},
             }
             
         # Match Question 2: Extreme temperature in Hanoi
         if "nhiệt độ" in q and "bất thường" in q and "hà nội" in q:
             return {
                 "code": "SELECT date, temperature_2m_max, temperature_2m_min, temperature_2m_mean\nFROM climate_daily\nWHERE location = 'Ha Noi' AND (temperature_2m_max > 38.0 OR temperature_2m_min < 10.0)\nORDER BY date DESC",
-                "explanation": "Truy vấn lọc các ngày có nhiệt độ cực đoan tại Hà Nội: nhiệt độ tối đa vượt quá 38°C hoặc nhiệt độ tối thiểu dưới 10°C."
+                "explanation": "Truy vấn lọc các ngày có nhiệt độ cực đoan tại Hà Nội: nhiệt độ tối đa vượt quá 38°C hoặc nhiệt độ tối thiểu dưới 10°C.",
+                "chart": {"type": "scatter", "x": "temperature_2m_min", "y": "temperature_2m_max"},
             }
             
         # Match Question 3: Cluster similar locations
         if "nhóm" in q or "tương đồng" in q:
             return {
                 "code": "SELECT location, region, round(AVG(temperature_2m_mean), 2) as temp_avg, round(SUM(precipitation_sum)/6, 2) as rain_annual_avg, round(AVG(wind_speed_10m_max), 2) as wind_avg\nFROM climate_daily\nGROUP BY location, region\nORDER BY region, temp_avg DESC",
-                "explanation": "Truy vấn tính toán các chỉ số trung bình dài hạn (nhiệt độ, lượng mưa năm, tốc độ gió) của các địa điểm để hỗ trợ phân nhóm khí hậu."
+                "explanation": "Truy vấn tính toán các chỉ số trung bình dài hạn (nhiệt độ, lượng mưa năm, tốc độ gió) của các địa điểm để hỗ trợ phân nhóm khí hậu.",
+                "chart": {"type": "scatter", "x": "rain_annual_avg", "y": "temp_avg"},
             }
             
         # Match Question 4: Relationship between rain and radiation
         if "bức xạ" in q or "quan hệ" in q:
             return {
                 "code": "SELECT region, round(AVG(precipitation_sum), 2) as rain_avg, round(AVG(shortwave_radiation_sum), 2) as radiation_avg, round(AVG(temperature_2m_mean), 2) as temp_avg\nFROM climate_daily\nGROUP BY region\nORDER BY temp_avg DESC",
-                "explanation": "Truy vấn so sánh tương quan trung bình giữa lượng mưa và bức xạ mặt trời ngắn theo 3 miền để phân tích ảnh hưởng của mây và mưa."
+                "explanation": "Truy vấn so sánh tương quan trung bình giữa lượng mưa và bức xạ mặt trời ngắn theo 3 miền để phân tích ảnh hưởng của mây và mưa.",
+                "chart": {"type": "bar", "x": "region", "y": "rain_avg"},
             }
             
         # Match general: Highest temperature
@@ -208,6 +212,7 @@ Trả JSON gồm hai trường 'code' (chuỗi code Python) và 'explanation' (g
                     ")"
                 ),
                 "explanation": "Tính nhiệt độ trung bình dài hạn theo từng địa điểm và lấy 10 nơi nóng nhất.",
+                "chart": {"type": "bar", "x": "location", "y": "nhiet_do_tb"},
             }
 
         # Lượng mưa trung bình theo tháng
@@ -224,6 +229,7 @@ Trả JSON gồm hai trường 'code' (chuỗi code Python) và 'explanation' (g
                     ")"
                 ),
                 "explanation": "Trích tháng từ cột ngày rồi tính lượng mưa trung bình mỗi tháng để thấy mùa mưa.",
+                "chart": {"type": "line", "x": "thang", "y": "luong_mua_tb"},
             }
 
         # Xu hướng ấm lên theo năm
@@ -240,6 +246,7 @@ Trả JSON gồm hai trường 'code' (chuỗi code Python) và 'explanation' (g
                     ")"
                 ),
                 "explanation": "Tính nhiệt độ trung bình theo từng năm để quan sát xu hướng ấm lên.",
+                "chart": {"type": "line", "x": "nam", "y": "nhiet_do_tb_nam"},
             }
 
         # Loại bỏ giá trị khuyết rồi thống kê (đúng tinh thần ví dụ dropna của đề bài)
