@@ -293,6 +293,19 @@ function App() {
     return out;
   }, [explorerData, yearlyTempTrend]);
 
+  const explorerSummary = useMemo(() => {
+    if (!explorerData?.monthly_trends?.length) return null;
+    const trends = explorerData.monthly_trends;
+    const avgTemp = trends.reduce((acc: number, cur: any) => acc + cur.avg_temp, 0) / trends.length;
+    const maxRain = Math.max(...trends.map((t: any) => t.avg_rain));
+    const highestTemp = Math.max(...trends.map((t: any) => t.avg_max_temp));
+    return {
+      avgTemp: avgTemp.toFixed(1),
+      maxRain: maxRain.toFixed(1),
+      highestTemp: highestTemp.toFixed(1)
+    };
+  }, [explorerData]);
+
   const extremeInsights = useMemo<string[]>(() => {
     if (!extremeData) return [];
     const topHot = (extremeData.counts_by_location || [])
@@ -335,6 +348,19 @@ function App() {
       `Tương quan nổi bật nhất: ${labels[best.a]} ↔ ${labels[best.b]} (r = ${best.v}), quan hệ ${dir} mức ${strength}.`,
       `Bức xạ mặt trời và lượng mưa thường tương quan nghịch: ngày nhiều mây/mưa nhận ít bức xạ hơn.`,
     ];
+  }, [relationshipData]);
+
+  const relationshipSummary = useMemo(() => {
+    const cm = relationshipData?.correlation_matrix;
+    if (!cm) return null;
+    const tempRain = cm.temperature_2m_mean?.precipitation_sum ?? 0;
+    const tempRadiation = cm.temperature_2m_mean?.shortwave_radiation_sum ?? 0;
+    const rainWind = cm.precipitation_sum?.wind_speed_10m_max ?? 0;
+    return {
+      tempRain: tempRain.toFixed(2),
+      tempRadiation: tempRadiation.toFixed(2),
+      rainWind: rainWind.toFixed(2)
+    };
   }, [relationshipData]);
 
   // AI Analyst flows
@@ -974,7 +1000,7 @@ function App() {
       legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
       grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
       xAxis: { type: "value", name: "Bức xạ (MJ/m²)", axisLabel, nameTextStyle, splitLine: splitLineSoft },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle: { ...nameTextStyle, align: "left", padding: [0, 0, 0, 10] }, splitLine: splitLineSoft },
       series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
     };
   };
@@ -1011,7 +1037,7 @@ function App() {
       legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
       grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
       xAxis: { type: "value", name: "Vĩ độ (°)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle: { ...nameTextStyle, align: "left", padding: [0, 0, 0, 10] }, splitLine: splitLineSoft },
       series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
     };
   };
@@ -1034,7 +1060,7 @@ function App() {
       tooltip: { ...tooltipStyle, trigger: "item" },
       grid: { left: 14, right: 20, top: 24, bottom: 14, containLabel: true },
       xAxis: { type: "category", data: regionLabels, axisLabel, axisLine: axisLineSoft, boundaryGap: true },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
+      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle: { ...nameTextStyle, align: "left", padding: [0, 0, 0, 10] }, splitLine: splitLineSoft },
       series: [
         {
           name: "Phân bố nhiệt độ",
@@ -1418,6 +1444,33 @@ function App() {
                   </div>
                 </header>
 
+                {/* Stat strip for explorer */}
+                {explorerSummary && (
+                  <section className="stat-strip" style={{ marginBottom: 22 }}>
+                    <div className="stat reveal" style={stagger(0)}>
+                      <span className="stat__num tnum" style={{ color: "var(--orange)" }}>
+                        {explorerSummary.avgTemp}
+                        <small>°C</small>
+                      </span>
+                      <span className="stat__lbl">Nhiệt độ trung bình</span>
+                    </div>
+                    <div className="stat reveal" style={stagger(1)}>
+                      <span className="stat__num tnum" style={{ color: "var(--pink)" }}>
+                        {explorerSummary.highestTemp}
+                        <small>°C</small>
+                      </span>
+                      <span className="stat__lbl">Nhiệt độ cao nhất (TB tháng)</span>
+                    </div>
+                    <div className="stat reveal" style={stagger(2)}>
+                      <span className="stat__num tnum" style={{ color: "var(--sky)" }}>
+                        {explorerSummary.maxRain}
+                        <small>mm</small>
+                      </span>
+                      <span className="stat__lbl">Lượng mưa tháng cao nhất</span>
+                    </div>
+                  </section>
+                )}
+
                 <div className="chart-grid-2x2">
                   {renderChartCard("Chu kỳ nhiệt độ theo tháng", getTempTrendOption(), !!explorerData, { height: 300 })}
                   {renderChartCard("Lượng mưa trung bình theo tháng", getRainTrendOption(), !!explorerData, { height: 300 })}
@@ -1537,6 +1590,30 @@ function App() {
                   <p className="eyebrow">Phòng thí nghiệm</p>
                   <h1 className="display">Tương quan &amp; quan hệ đa biến</h1>
                 </header>
+
+                {/* Stat strip for relationship */}
+                {relationshipSummary && (
+                  <section className="stat-strip" style={{ marginBottom: 22 }}>
+                    <div className="stat reveal" style={stagger(0)}>
+                      <span className="stat__num tnum" style={{ color: "var(--teal)" }}>
+                        {relationshipSummary.tempRadiation}
+                      </span>
+                      <span className="stat__lbl">Nhiệt độ & Bức xạ (r)</span>
+                    </div>
+                    <div className="stat reveal" style={stagger(1)}>
+                      <span className="stat__num tnum" style={{ color: "var(--sky)" }}>
+                        {relationshipSummary.tempRain}
+                      </span>
+                      <span className="stat__lbl">Nhiệt độ & Lượng mưa (r)</span>
+                    </div>
+                    <div className="stat reveal" style={stagger(2)}>
+                      <span className="stat__num tnum" style={{ color: "var(--purple)" }}>
+                        {relationshipSummary.rainWind}
+                      </span>
+                      <span className="stat__lbl">Lượng mưa & Gió (r)</span>
+                    </div>
+                  </section>
+                )}
 
                 <div className="chart-grid-2x2">
                   {renderChartCard("Ma trận tương quan Pearson", getCorrOption(), !!relationshipData, { placeholder: "Đang tính hệ số tương quan…", height: 380 })}
