@@ -674,7 +674,7 @@ function App() {
     return (
       <div className="panel insights reveal">
         <span className="panel__label">
-          <Icon name="sparkle" size={15} /> Kết luận &amp; câu chuyện dữ liệu
+          Kết luận &amp; câu chuyện dữ liệu
         </span>
         <ul className="insights__list">
           {items.map((text, i) => (
