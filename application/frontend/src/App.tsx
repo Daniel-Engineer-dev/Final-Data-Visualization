@@ -819,10 +819,20 @@ function App() {
       xAxis: { type: "category", data: months, axisLabel, axisLine: axisLineSoft },
       yAxis: {
         type: "value",
-        name: "°C",
+        name: "Nhiệt độ (°C)",
+        nameLocation: "end",
+        nameGap: 12,
+        nameRotate: 0,
         scale: true,
         axisLabel,
-        nameTextStyle,
+        nameTextStyle: {
+          ...nameTextStyle,
+          color: PALETTE.inkSoft,
+          fontSize: 12,
+          fontWeight: 500,
+          align: "left",
+          verticalAlign: "bottom",
+        },
         splitLine: splitLineSoft,
       },
       series: [
@@ -907,14 +917,32 @@ function App() {
     if (!yearlyTempTrend.length) return {};
     return {
       tooltip: { ...tooltipStyle, trigger: "axis", formatter: (p: any) => `Năm ${p[0].axisValue}<br/><strong>${p[0].data}°C</strong>` },
-      grid: { left: 52, right: 24, top: 24, bottom: 40 },
+      grid: { left: 52, right: 24, top: 44, bottom: 40 },
       xAxis: {
         type: "category",
         data: yearlyTempTrend.map((p) => String(p.x)),
         axisLabel,
         axisLine: axisLineSoft,
       },
-      yAxis: { type: "value", name: "°C", scale: true, nameTextStyle, axisLabel, axisLine: axisLineSoft, splitLine: splitLineSoft },
+      yAxis: {
+        type: "value",
+        name: "Nhiệt độ (°C)",
+        nameLocation: "end",
+        nameGap: 12,
+        nameRotate: 0,
+        scale: true,
+        nameTextStyle: {
+          ...nameTextStyle,
+          color: PALETTE.inkSoft,
+          fontSize: 12,
+          fontWeight: 500,
+          align: "left",
+          verticalAlign: "bottom",
+        },
+        axisLabel,
+        axisLine: axisLineSoft,
+        splitLine: splitLineSoft,
+      },
       series: [
         {
           type: "line",
@@ -1035,9 +1063,28 @@ function App() {
         formatter: (p: any) => `${p.seriesName}<br/>Vĩ độ: ${p.value[0]}°<br/>Nhiệt độ: ${p.value[1]}°C`,
       },
       legend: { ...legendStyle, data: ["Miền Bắc", "Miền Trung", "Miền Nam"], top: 0 },
-      grid: { left: 14, right: 20, top: 44, bottom: 14, containLabel: true },
-      xAxis: { type: "value", name: "Vĩ độ (°)", scale: true, axisLabel, nameTextStyle, splitLine: splitLineSoft },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle: { ...nameTextStyle, align: "left", padding: [0, 0, 0, 10] }, splitLine: splitLineSoft },
+      grid: { left: 68, right: 24, top: 52, bottom: 52 },
+      xAxis: {
+        type: "value",
+        name: "Vĩ độ (°)",
+        nameLocation: "middle",
+        nameGap: 32,
+        scale: true,
+        axisLabel,
+        nameTextStyle: { ...nameTextStyle, align: "center" },
+        splitLine: splitLineSoft,
+      },
+      yAxis: {
+        type: "value",
+        name: "Nhiệt độ TB (°C)",
+        nameLocation: "middle",
+        nameGap: 48,
+        nameRotate: 90,
+        scale: true,
+        axisLabel,
+        nameTextStyle: { ...nameTextStyle, align: "center", verticalAlign: "middle" },
+        splitLine: splitLineSoft,
+      },
       series: [mkSeries("North", "Miền Bắc"), mkSeries("Central", "Miền Trung"), mkSeries("South", "Miền Nam")],
     };
   };
@@ -1058,9 +1105,19 @@ function App() {
 
     return {
       tooltip: { ...tooltipStyle, trigger: "item" },
-      grid: { left: 14, right: 20, top: 24, bottom: 14, containLabel: true },
+      grid: { left: 68, right: 24, top: 24, bottom: 40 },
       xAxis: { type: "category", data: regionLabels, axisLabel, axisLine: axisLineSoft, boundaryGap: true },
-      yAxis: { type: "value", name: "Nhiệt độ TB (°C)", scale: true, axisLabel, nameTextStyle: { ...nameTextStyle, align: "left", padding: [0, 0, 0, 10] }, splitLine: splitLineSoft },
+      yAxis: {
+        type: "value",
+        name: "Nhiệt độ TB (°C)",
+        nameLocation: "middle",
+        nameGap: 48,
+        nameRotate: 90,
+        scale: true,
+        axisLabel,
+        nameTextStyle: { ...nameTextStyle, align: "center", verticalAlign: "middle" },
+        splitLine: splitLineSoft,
+      },
       series: [
         {
           name: "Phân bố nhiệt độ",
