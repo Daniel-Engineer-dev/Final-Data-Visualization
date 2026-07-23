@@ -6,16 +6,87 @@ Thông qua việc phân tích và trực quan hóa bộ dữ liệu hơn 61.000 
 \section{Thay đổi và xu hướng theo thời gian}
 Phân tích chu kỳ thời gian theo tháng đã làm nổi bật tính mùa vụ sâu sắc và sự dịch chuyển lượng mưa rõ rệt giữa các vùng miền. Tại miền Bắc, mùa mưa chủ yếu kéo dài từ tháng 6 đến tháng 9, trùng khớp với thời kỳ mùa hè nóng ẩm, trong khi mùa đông từ tháng 12 đến tháng 2 năm sau ghi nhận nền lượng mưa rất thấp kèm theo nhiệt độ giảm sâu. Trái lại, miền Trung thể hiện một sự dịch chuyển mùa mưa rõ rệt về phía cuối năm, với lượng mưa tích lũy đạt đỉnh điểm vào các tháng 10 và tháng 11. Hiện tượng dịch chuyển mùa mưa này là kết quả tác động tổ hợp của địa hình dãy Trường Sơn chắn gió mùa Đông Bắc mang hơi ẩm và sự đổ bộ tập trung của các cơn bão nhiệt đới trong giai đoạn này. Đối với miền Nam, khí hậu phân hóa thành hai mùa mưa và khô rõ rệt, trong đó mùa mưa kéo dài từ tháng 5 đến tháng 11 dưới ảnh hưởng của gió mùa Tây Nam nóng ẩm, giúp lượng mưa trung bình tháng luôn duy trì ở ngưỡng cao.
 
+Chu kỳ nhiệt độ trung bình theo tháng trên phạm vi toàn quốc (Hình~\ref{fig:ana-temp-cycle}) thể hiện rõ dạng hình chuông với đỉnh rơi vào các tháng mùa hè (tháng 5--8), đồng thời biên độ giữa đường nhiệt độ tối đa và tối thiểu phản ánh mức dao động nhiệt trong ngày. Sự dịch pha mùa mưa của miền Trung -- với đỉnh mưa rơi muộn vào tháng 10--11 thay vì giữa năm như hai miền còn lại -- là một đặc trưng nổi bật, bắt nguồn từ tác động chắn gió của dãy Trường Sơn và mùa bão tập trung vào cuối năm. Về dấu hiệu nóng lên, đường xu hướng nhiệt độ trung bình theo năm (Hình~\ref{fig:ana-yearly-trend}) không cho thấy quy luật tăng đơn điệu mà dao động quanh mức $25^\circ$C, trong khi ma trận nhiệt độ Tháng~$\times$~Năm (Hình~\ref{fig:ana-heatmap}) giúp định vị nhanh các tháng nóng bất thường, tiêu biểu là tháng 4 năm 2024.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_temp_cycle.png}
+    \caption{Chu kỳ nhiệt độ tối đa, trung bình và tối thiểu theo tháng (toàn quốc, 2020--2025)}
+    \label{fig:ana-temp-cycle}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_yearly_trend.png}
+    \caption{Xu hướng nhiệt độ trung bình theo năm -- dao động quanh $25^\circ$C, không tăng đơn điệu}
+    \label{fig:ana-yearly-trend}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_heatmap.png}
+    \caption{Ma trận nhiệt độ trung bình Tháng~$\times$~Năm, làm nổi bật các tháng nóng bất thường}
+    \label{fig:ana-heatmap}
+\end{figure}
+
 \section{Mối quan hệ giữa các biến}
 Tính toán ma trận tương quan Pearson trên toàn lãnh thổ cho thấy các mối liên hệ vật lý chặt chẽ giữa các biến số thời tiết. Hệ số tương quan giữa bức xạ mặt trời sóng ngắn tích lũy ngày (\texttt{shortwave\_radiation\_sum}) và nhiệt độ không khí trung bình ngày (\texttt{temperature\_2m\_mean}) đạt mức \textbf{0.5606}, thể hiện mối tương quan thuận từ mức trung bình đến mạnh. Bản chất vật lý của mối liên hệ này là do lượng bức xạ mặt trời cao thúc đẩy quá trình hấp thụ nhiệt lượng của bề mặt đất, từ đó gián tiếp làm tăng nhiệt độ không khí ở tầng sát đất. Bên cạnh đó, lượng mưa ngày ghi nhận mối tương quan nghịch với bức xạ mặt trời, đạt giá trị khoảng -0.25 tại các vùng thuộc miền Nam. Điều này phản ánh quy luật thời tiết thực tế khi những ngày có lượng mưa lớn thường đi kèm độ phủ mây dày, cản trở đáng kể lượng bức xạ sóng ngắn chiếu trực tiếp xuống bề mặt đất.
+
+Ma trận tương quan Pearson (Hình~\ref{fig:ana-correlation}) tổng hợp trực quan toàn bộ các cặp hệ số, trong đó ô Bức xạ--Nhiệt độ hiện màu cam đậm ($0.56$) trong khi ô Lượng mưa--Bức xạ nghiêng về sắc xanh ($-0.34$), khớp với quy luật vật lý đã phân tích. Biểu đồ phân tán giữa bức xạ và nhiệt độ trung bình ngày (Hình~\ref{fig:ana-scatter}) minh họa đám mây điểm có xu hướng dốc lên rõ rệt; đồng thời việc mã hóa màu theo vùng miền cho thấy các điểm miền Nam co cụm ở vùng nhiệt độ cao và ổn định, còn miền Bắc phân tán rộng xuống dải nhiệt độ thấp.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_correlation.png}
+    \caption{Ma trận hệ số tương quan Pearson giữa nhiệt độ, lượng mưa, sức gió và bức xạ mặt trời}
+    \label{fig:ana-correlation}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_scatter.png}
+    \caption{Biểu đồ phân tán bức xạ mặt trời và nhiệt độ trung bình ngày, phân tách theo ba miền}
+    \label{fig:ana-scatter}
+\end{figure}
 
 \section{Các insight khí hậu chính}
 
 \subsection{Đặc trưng nhiệt độ ba miền}
 Phân tích thực nghiệm chứng minh miền Nam có nền nhiệt độ trung bình ngày ổn định và cao nhất cả nước ($27.16^\circ$C) với biên độ nhiệt cực nhỏ, thể hiện qua độ lệch chuẩn chỉ $1.32^\circ$C và dải nhiệt độ dao động trong khoảng hẹp từ $22.3^\circ$C đến $33.6^\circ$C. Ngược lại, miền Bắc sở hữu nhiệt độ trung bình thấp nhất ($23.32^\circ$C) nhưng có biên độ dao động nhiệt rộng nhất cả nước với độ lệch chuẩn lên tới $4.91^\circ$C, ghi nhận nhiệt độ cực tiểu giảm sâu xuống $4.5^\circ$C vào mùa đông và nhiệt độ cực đại đạt $33.9^\circ$C vào mùa hè. Trong khi đó, khu vực miền Trung có nền nhiệt độ trung bình nằm ở khoảng trung gian ($24.80^\circ$C) nhưng lại ghi nhận giá trị nhiệt độ tối đa ngày cao nhất lên tới $35.3^\circ$C do ảnh hưởng trực tiếp của gió phơn Tây Nam khô nóng.
 
+Sự phân hóa này được thể hiện cô đọng qua biểu đồ hộp phân bố nhiệt độ ba miền (Hình~\ref{fig:ana-boxplot}): hộp của Miền Nam ngắn và nằm cao, phản ánh nền nhiệt ổn định quanh năm; ngược lại, hộp của Miền Bắc dài nhất với khoảng biến thiên từ $7.4^\circ$C đến $31.9^\circ$C và đuôi dưới kéo sâu, tương ứng với các đợt rét đậm mùa đông làm giãn rộng biên độ nhiệt. Góc nhìn địa lý tại Hình~\ref{fig:ana-lat-temp} củng cố quy luật này: khi vĩ độ tăng dần về phía Bắc, dải nhiệt độ trải rộng xuống các giá trị thấp, trong khi các trạm phía Nam (vĩ độ thấp) luôn duy trì nền nhiệt cao và hẹp.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_temp_boxplot.png}
+    \caption{Phân bố nhiệt độ trung bình ngày theo ba miền -- Miền Bắc biên độ rộng nhất, Miền Nam ổn định nhất}
+    \label{fig:ana-boxplot}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_lat_temp.png}
+    \caption{Quan hệ giữa vĩ độ và nhiệt độ trung bình ngày -- vĩ độ càng cao (càng ra Bắc) biên độ nhiệt càng rộng}
+    \label{fig:ana-lat-temp}
+\end{figure}
+
 \subsection{Các giá trị thời tiết cực đoan ghi nhận}
 Nghiên cứu đã phát hiện đợt nắng nóng diện rộng cực kỳ khốc liệt vào cuối tháng 4 năm 2024. Trạm khí tượng Lào Cai ở miền Bắc ghi nhận giá trị nhiệt độ kỷ lục \textbf{$41.8^\circ$C} vào ngày \textbf{29/04/2024}, đồng thời trạm Huế ở miền Trung cũng ghi nhận mức nhiệt cực đại \textbf{$41.5^\circ$C} vào ngày \textbf{30/04/2024}. Về các hiện tượng mưa cực đoan trong ngày, trạm Vinh ở miền Trung ghi nhận lượng mưa tích lũy kỷ lục trong ngày lên tới \textbf{267.5 mm} vào ngày \textbf{18/10/2020}, dẫn tới ngập lụt nghiêm trọng trên diện rộng. Trạm Rạch Giá ở miền Nam cũng ghi nhận lượng mưa cực đại trong ngày đạt mức \textbf{261.5 mm} vào ngày \textbf{05/10/2021}.
+
+Xét trên toàn bộ giai đoạn khảo sát, biểu đồ xếp hạng số ngày cực đoan giữa các trạm (Hình~\ref{fig:ana-extreme-ranking}) cho thấy Huế dẫn đầu cả nước về số ngày nắng nóng $\ge 38^\circ$C, bỏ xa các trạm còn lại, trong khi bản đồ điểm nóng thời tiết cực đoan (Hình~\ref{fig:ana-extreme-map}) khoanh vùng dải nắng nóng tập trung dày đặc tại khu vực Bắc Trung Bộ và Trung Trung Bộ -- nơi chịu tác động mạnh của hiệu ứng phơn.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chart_extreme_ranking.png}
+    \caption{Xếp hạng số ngày nắng nóng ($\ge 38^\circ$C) và mưa lớn ($\ge 100$ mm) theo trạm đo}
+    \label{fig:ana-extreme-ranking}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.72\textwidth]{chart_extreme_map.png}
+    \caption{Bản đồ phân bố điểm nóng thời tiết cực đoan -- kích thước điểm tỷ lệ với tổng số ngày vượt ngưỡng}
+    \label{fig:ana-extreme-map}
+\end{figure}
 
 \subsection{Độ nhạy tương quan bức xạ - nhiệt độ theo vùng miền}
 Độ nhạy của hệ số tương quan Pearson giữa bức xạ mặt trời sóng ngắn và nhiệt độ trung bình ngày thể hiện sự phân hóa rõ rệt theo khu vực địa lý. Hệ số này đạt giá trị mạnh nhất tại miền Bắc \textbf{(0.6022)}, mức trung bình tại miền Nam \textbf{(0.5681)} và đạt mức yếu nhất tại miền Trung \textbf{(0.4796)}. Kết quả này chỉ ra rằng nhiệt độ không khí tại miền Trung chịu sự chi phối mạnh mẽ bởi các yếu tố động lực học khí quyển phức tạp, chẳng hạn như hiệu ứng phơn vượt dãy Trường Sơn, chứ không đơn thuần phụ thuộc vào lượng bức xạ mặt trời nhận được tại chỗ như hai miền còn lại.

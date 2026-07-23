@@ -1,15 +1,11 @@
 \chapter{Thiết kế Giao diện và Trải nghiệm Tương tác}
 
 \section{Tổng quan giao diện}
-Dashboard ứng dụng được thiết kế trên một giao diện thống nhất theo phong cách Dark Mode hiện đại, sử dụng các thẻ khối bán trong suốt (glassmorphism) giúp tăng chiều sâu thị giác và tạo cảm giác premium. Thanh sidebar bên trái cố định dùng để điều hướng giữa năm phân hệ chức năng chính bao gồm Tổng quan trạm đo phục vụ hiển thị bản đồ toàn quốc và chỉ số chi tiết trạm, Khám phá khí hậu thể hiện xu hướng nhiệt độ và ma trận nhiệt độ mùa vụ, Thời tiết cực đoan cung cấp thống kê ngày vượt ngưỡng thiên tai, Tương quan khí hậu biểu diễn hệ số Pearson đa biến, và cuối cùng là phân hệ AI Analyst Portal hỗ trợ phân tích ngôn ngữ tự nhiên.
+Dashboard ứng dụng được thiết kế trên một giao diện thống nhất theo phong cách ``Editorial Climate Almanac'' -- tông sáng, nền giấy ấm (paper-toned màu \texttt{\#F7F3E9}) kết hợp kiểu chữ serif Fraunces, mang lại cảm giác trang nhã như một ấn phẩm khí hậu. Các thẻ nội dung nền sáng bo góc mềm giúp phân tách thị giác rõ ràng mà không lạm dụng hiệu ứng. Thanh sidebar bên trái cố định dùng để điều hướng giữa năm phân hệ chức năng chính bao gồm Tổng quan trạm đo phục vụ hiển thị bản đồ toàn quốc và chỉ số chi tiết trạm, Khám phá khí hậu thể hiện xu hướng nhiệt độ và ma trận nhiệt độ mùa vụ, Thời tiết cực đoan cung cấp thống kê ngày vượt ngưỡng thiên tai, Tương quan khí hậu biểu diễn hệ số Pearson đa biến, và cuối cùng là phân hệ AI Analyst Portal hỗ trợ phân tích ngôn ngữ tự nhiên.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][7cm][c]{0.85\textwidth}{\centering
-    \textbf{KHOẢNG TRỐNG CHÈN ẢNH GIAO DIỆN TỔNG QUAN DASHBOARD}\\
-    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_overview.png}\\
-    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_overview.png}\\
-    \textit{Mô tả:} Chụp ảnh giao diện chính lúc đang hiển thị tab Tổng quan, có đầy đủ bản đồ trạm đo và các thẻ KPI phía trên.}}
+    \includegraphics[width=\textwidth]{dashboard_overview.png}
     \caption{Giao diện tổng quan của dashboard Vietnam Climate Pulse}
     \label{fig:dashboard-overview}
 \end{figure}
@@ -19,28 +15,29 @@ Mỗi phân hệ giao diện tập trung giải quyết các bài toán trực q
 
 \subsection{Phân hệ Khám phá Khí hậu (Explorer)}
 Trang này được thiết kế để phân tích các yếu tố chu kỳ và xu hướng thời gian của từng địa phương:
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering
-    \textbf{KHOẢNG TRỐNG CHÈN ẢNH PHÂN HỆ KHÁM PHÁ KHÍ HẬU}\\
-    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_explorer.png}\\
-    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_explorer.png}\\
-    \textit{Mô tả:} Chụp ảnh giao diện tab Khám phá khí hậu, thể hiện biểu đồ đường nhiệt độ tối đa/trung bình/tối thiểu và biểu đồ heatmap tháng x năm.}}
+    \includegraphics[width=\textwidth]{dashboard_explorer.png}
     \caption{Giao diện phân hệ khám phá khí hậu và xu hướng mùa vụ}
     \label{fig:dashboard-explorer}
 \end{figure}
 
 \subsection{Phân hệ Thời tiết Cực đoan (Extreme Events)}
 Trang này hỗ trợ lọc động và khoanh vùng các địa điểm thường xuyên xuất hiện các đợt nắng nóng hoặc mưa bão lịch sử:
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering
-    \textbf{KHOẢNG TRỐNG CHÈN ẢNH PHÂN HỆ THỜI TIẾT CỰC ĐOAN}\\
-    \textit{Hướng dẫn đặt tên tệp:} \texttt{dashboard\_extreme.png}\\
-    \textit{Đường dẫn lưu tệp trên đĩa:} \texttt{report/images/dashboard\_extreme.png}\\
-    \textit{Mô tả:} Chụp ảnh giao diện tab Thời tiết cực đoan, bao gồm hai thanh trượt điều chỉnh ngưỡng nhiệt độ/lượng mưa và bảng nhật ký các ngày cực đoan bên dưới.}}
+    \includegraphics[width=\textwidth]{dashboard_extreme.png}
     \caption{Giao diện phân hệ thống kê và hiển thị nhật ký thời tiết cực đoan}
     \label{fig:dashboard-extreme}
+\end{figure}
+
+\subsection{Phân hệ Tương quan Khí hậu (Relationship)}
+Trang này phục vụ khai phá quan hệ vật lý đa biến giữa các chỉ số khí hậu, kết hợp ma trận hệ số tương quan Pearson và biểu đồ phân tán tương tác phân tách theo vùng miền:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{dashboard_relationship.png}
+    \caption{Giao diện phân hệ tương quan khí hậu với ma trận Pearson và biểu đồ phân tán đa biến}
+    \label{fig:dashboard-relationship}
 \end{figure}
 
 \section{Liên kết tương tác giữa các biểu đồ}
@@ -50,5 +47,5 @@ Trang này hỗ trợ lọc động và khoanh vùng các địa điểm thườ
 Để nâng cao tính cá nhân hóa trong việc khai thác dữ liệu, hệ thống cung cấp các bộ lọc và điều hướng tương tác động. Bộ chọn dropdown tại phân hệ Khám phá khí hậu cho phép người dùng lọc thông tin chi tiết của từng trạm đo cụ thể hoặc xem số liệu trung bình trên quy mô toàn quốc, tự động cập nhật đồng bộ các biểu đồ đường, biểu đồ cột và ma trận nhiệt độ tương ứng. Hơn nữa, các thanh trượt động được tích hợp trong bộ lọc ngưỡng thời tiết cực đoan, cho phép người dùng kéo trượt để thay đổi giá trị ngưỡng nhiệt độ hoặc lượng mưa, hệ thống sẽ tự động gửi tham số mới về API backend và tải lại danh sách các ngày thiên tai tương ứng.
 
 \section{Thiết kế thẩm mỹ và khả năng tiếp cận}
-Tính thẩm mỹ và khả năng tiếp cận của ứng dụng được chú trọng thiết kế nhằm mang lại trải nghiệm tối ưu cho nhiều đối tượng người dùng. Bảng màu của dashboard sử dụng các gam màu có ý nghĩa chỉ thị khí hậu trực quan, trong đó màu đỏ (\texttt{\#ff5b52}) tượng trưng cho nắng nóng cực đoan, màu xanh ngọc (\texttt{\#00bcd4}) đại diện cho mưa bão tích lũy, và màu xanh dương (\texttt{\#00d2ff}) phản ánh nền nhiệt độ thấp lạnh giá. Đồng thời, thiết kế đáp ứng (Responsive) được triển khai thông qua CSS Grid và Media Queries, tự động ẩn thanh điều hướng sidebar và chuyển đổi bố cục từ hai cột thành một cột dọc trên màn hình thiết bị di động và máy tính bảng, đảm bảo tính thân thiện và tối ưu hiển thị trên mọi loại thiết bị.
+Tính thẩm mỹ và khả năng tiếp cận của ứng dụng được chú trọng thiết kế nhằm mang lại trải nghiệm tối ưu cho nhiều đối tượng người dùng. Bảng màu của dashboard sử dụng hệ màu đất (earth-tone) có ý nghĩa chỉ thị khí hậu trực quan, trong đó màu đất nung (\texttt{\#C2683D}) tượng trưng cho nắng nóng cực đoan, màu xanh teal (\texttt{\#3E7CA0}) đại diện cho miền Bắc mát lạnh, màu hổ phách (\texttt{\#C98A1E}) cho miền Trung nắng nóng và màu xanh rừng (\texttt{\#2E6F4E}) cho miền Nam ẩm ướt. Thang nhiệt độ chuyển dần từ xanh teal (lạnh) sang đất nung (nóng), còn thang tương quan phân kỳ từ teal (âm) qua kem (0) tới đất nung (dương), bảo đảm màu sắc luôn mang ý nghĩa và không gây quá tải thị giác. Đồng thời, thiết kế đáp ứng (Responsive) được triển khai thông qua CSS Grid và Media Queries, tự động ẩn thanh điều hướng sidebar và chuyển đổi bố cục từ hai cột thành một cột dọc trên màn hình thiết bị di động và máy tính bảng, đảm bảo tính thân thiện và tối ưu hiển thị trên mọi loại thiết bị.
 
