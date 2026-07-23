@@ -32,9 +32,9 @@ Sao chép file mẫu rồi điền API key (để trống nếu chỉ chạy AI 
 cp application/.env.example application/.env
 ```
 
-Backend hỗ trợ mọi nhà cung cấp chuẩn OpenAI (OpenAI, Groq, OpenRouter, GitHub Models, Ollama)
-qua các biến `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `AI_MODEL`. Nếu không có key, AI tự chạy
-chế độ mock offline.
+Backend dùng Google Gemini qua biến `GEMINI_API_KEY`. Model mặc định là `gemini-flash-latest`,
+có thể đổi qua biến `AI_MODEL`. Lấy API key miễn phí tại https://aistudio.google.com/apikey.
+Nếu không có key, AI tự chạy chế độ mock offline.
 
 ## Khởi động nhanh
 

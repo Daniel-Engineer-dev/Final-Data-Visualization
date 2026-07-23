@@ -10,6 +10,7 @@ _log = logging.getLogger(__name__)
 class AIService:
     def __init__(self):
         self.gemini_key = os.getenv("GEMINI_API_KEY")
+        self.model = os.getenv("AI_MODEL") or "gemini-flash-latest"
 
     def translate_to_sql(self, question: str) -> Dict[str, str]:
         """
@@ -36,7 +37,7 @@ class AIService:
 
     def _call_gemini(self, question: str, system_prompt: str, fallback) -> Dict[str, str]:
         # Gemini API call
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.gemini_key}"
         headers = {"Content-Type": "application/json"}
 
         payload = {
