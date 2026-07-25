@@ -52,3 +52,4 @@ report/*.xdv
 report/.vscode/*
 !report/.vscode/settings.json
 .idea/
+kich-ban-quay-video-duc-qvinh.md

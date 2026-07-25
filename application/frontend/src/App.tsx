@@ -286,8 +286,12 @@ function App() {
       const first = yearlyTempTrend[0];
       const last = yearlyTempTrend[yearlyTempTrend.length - 1];
       const dir = slope >= 0 ? "tăng" : "giảm";
+      const note =
+        Math.abs(slope) < 0.1
+          ? "biên độ dao động nhỏ, chưa đủ để kết luận xu hướng khí hậu dài hạn"
+          : `phản ánh xu hướng ${dir === "tăng" ? "ấm lên" : "mát đi"} trong giai đoạn này`;
       out.push(
-        `Nhiệt độ TB năm ${dir} khoảng ${Math.abs(slope).toFixed(2)}°C/năm (${first.y.toFixed(1)}°C năm ${first.x} → ${last.y.toFixed(1)}°C năm ${last.x}), phản ánh xu hướng ấm lên.`,
+        `Nhiệt độ TB năm ${dir} khoảng ${Math.abs(slope).toFixed(2)}°C/năm (${first.y.toFixed(1)}°C năm ${first.x} → ${last.y.toFixed(1)}°C năm ${last.x}), ${note}.`,
       );
     }
     return out;
