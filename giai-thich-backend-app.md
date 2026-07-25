@@ -7,11 +7,11 @@
 
 ## `core/` — cấu hình chung
 
-- **`config.py`** — Đọc biến môi trường từ `.env` (đường dẫn tới file Parquet, DuckDB, SQLite log, tên model AI) qua Pydantic Settings, dùng chung cho toàn backend.
+- **`config.py`** — Đọc cấu hình từ `application/.env` qua Pydantic Settings (đường dẫn Parquet/DuckDB/SQLite log, khóa `GEMINI_API_KEY`, tên model `AI_MODEL`). Tự nạp `.env` theo **đường dẫn tuyệt đối** nên chạy backend **không cần cờ `--env-file`**. Dùng chung cho toàn backend.
 
 ## `models/` — định nghĩa kiểu dữ liệu
 
-- **`ai.py`** — Các Pydantic model cho luồng AI: `AnalysisRequest` (câu hỏi người dùng gửi lên), `AnalysisProposal` (đề xuất code + giải thích, có trạng thái DRAFT/APPROVED/REJECTED/EXECUTED), `ApprovalRequest`, `AILogEntry` (1 dòng nhật ký).
+- **`ai.py`** — Các Pydantic model cho luồng AI: `AnalysisRequest` (câu hỏi người dùng gửi lên), `AnalysisProposal` (đề xuất code + giải thích + gợi ý biểu đồ, trạng thái DRAFT/APPROVED/REJECTED/EXECUTED), `ChartSpec` (loại biểu đồ + trục x/y do AI đề xuất), `ApprovalRequest`, `AILogEntry` (1 dòng nhật ký).
 
 ## `routers/` — các endpoint API
 
@@ -22,12 +22,12 @@
   - `/explorer` — chu kỳ tháng + ma trận heatmap năm×tháng, lọc theo trạm/miền.
   - `/extreme-events` — ngày nắng nóng/mưa lớn vượt ngưỡng, xếp hạng theo trạm/năm/tháng.
   - `/relationship` — ma trận tương quan Pearson + mẫu dữ liệu scatter.
-- **`ai.py`** — Endpoint cho AI Analyst Portal: tạo đề xuất (`POST /proposals`), phê duyệt (`/approve`), từ chối (`/reject`), thực thi (`/execute`), và đọc nhật ký (`/logs`). Đây là nơi hiện thực hoá luồng human-in-the-loop.
+- **`ai.py`** — Endpoint cho AI Analyst Portal: tạo đề xuất (`POST /proposals`, có kiểm tra & lấy gợi ý biểu đồ của AI), phê duyệt (`/approve` — chạy guard an toàn), từ chối (`/reject`), thực thi (`/execute` — **chỉ chạy khi đề xuất đã `approved`**), và đọc nhật ký (`/logs`). Đây là nơi hiện thực hoá luồng human-in-the-loop.
 
 ## `services/` — logic nghiệp vụ
 
 - **`db.py`** — Mở kết nối DuckDB và tạo view `climate_daily` trỏ thẳng vào file Parquet (tự dò đường dẫn nếu cấu hình sai).
-- **`ai_service.py`** — Gọi Gemini API để dịch câu hỏi tiếng Việt thành SQL hoặc code pandas (kèm system prompt mô tả schema bảng); nếu không có API key hoặc gọi lỗi thì rơi về **chế độ mock offline** (so khớp từ khoá, trả code mẫu dựng sẵn) — chính là chế độ dự phòng ngoại tuyến.
+- **`ai_service.py`** — Gọi Gemini API (model lấy từ `AI_MODEL`, mặc định `gemini-flash-latest`) để dịch câu hỏi tiếng Việt thành SQL hoặc code pandas, **kèm gợi ý loại biểu đồ phù hợp** (cột/đường/tròn/phân tán), dựa trên system prompt mô tả schema bảng; nếu không có API key hoặc gọi lỗi thì rơi về **chế độ mock offline** (so khớp từ khoá, trả code mẫu dựng sẵn) — chính là chế độ dự phòng ngoại tuyến.
 - **`sql_guard.py`** — Guardrail cho SQL: chỉ cho `SELECT`/`WITH`, chặn các từ khoá ghi/xoá (INSERT, DROP, DELETE...), chỉ cho 1 câu lệnh mỗi lần.
 - **`python_guard.py`** — Guardrail cho Python: parse AST để chặn `import`, thuộc tính dunder, các hàm nguy hiểm (`eval`, `exec`, `open`, `os`, `sys`...), bắt buộc code phải gán kết quả vào biến `result`.
 - **`python_runner.py`** — Thực thi code pandas đã qua guard trong sandbox giới hạn builtin, nạp `df` từ DuckDB, chuẩn hoá kết quả trả về (DataFrame/Series/scalar) thành JSON.

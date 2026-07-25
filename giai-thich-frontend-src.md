@@ -10,7 +10,7 @@ Một component duy nhất quản lý cả 5 phân hệ qua state của React (k
 - **`useEffect` gọi API**: mỗi khi tab hoặc bộ lọc thay đổi, gọi sang các endpoint backend (`/api/dataset/...`, `/api/ai/...`) tương ứng đã liệt kê trong `giai-thich-backend-app.md`.
 - **`useMemo` tính insight**: từ dữ liệu thô trả về, tự tính các câu kết luận hiển thị trong khung "Kết luận & câu chuyện dữ liệu" (tháng nóng nhất, xu hướng năm, hệ số tương quan...) — đây chính là nơi có insight về xu hướng nhiệt độ đã được sửa lỗi logic trước đó.
 - **Cấu hình biểu đồ ECharts**: mỗi biểu đồ (bản đồ trạm, đường xu hướng, heatmap, boxplot, scatter, ma trận tương quan...) được định nghĩa dạng object `option` ngay trong file, dùng chung màu sắc/token từ `theme.ts`.
-- **Luồng AI Portal**: gọi tạo đề xuất → hiển thị code (SQL/Python) ở trạng thái DRAFT → cho sửa trực tiếp → gọi duyệt & thực thi → hiển thị bảng/biểu đồ kết quả → tải nhật ký.
+- **Luồng AI Portal**: gọi tạo đề xuất → hiển thị code (SQL/Python) + **gợi ý biểu đồ của AI** ở trạng thái DRAFT → cho sửa trực tiếp (sửa sau khi duyệt sẽ tự quay lại DRAFT) → bấm **Phê duyệt** (chạy guard an toàn, chuyển APPROVED) rồi **Chạy local** (nút Chạy chỉ mở sau khi đã duyệt) → hiển thị bảng/biểu đồ kết quả (ưu tiên loại biểu đồ AI đề xuất, người dùng đổi được) → tải nhật ký. Bấm một dòng nhật ký sẽ nạp lại đề xuất đó **đúng trạng thái đã lưu** (draft/approved/executed).
 - **Render JSX**: toàn bộ giao diện 5 tab, sidebar điều hướng, các card KPI, modal phóng to biểu đồ (`expandedChart`).
 
 ## `Icon.tsx`
