@@ -7,6 +7,7 @@ from app.models.ai import (
     AnalysisProposal,
     AnalysisRequest,
     ApprovalRequest,
+    ChartSpec,
     ProposalStatus,
 )
 from app.services.sql_guard import ensure_read_only_sql
@@ -36,13 +37,22 @@ def create_proposal(request: AnalysisRequest) -> AnalysisProposal:
                 detail=ai_res.get("explanation", "Yêu cầu không hợp lệ hoặc không liên quan đến dữ liệu khí hậu.")
             )
 
+        # Gợi ý biểu đồ từ AI — nếu sai định dạng thì bỏ qua, không để hỏng đề xuất.
+        chart_raw = ai_res.get("chart")
+        chart = None
+        if isinstance(chart_raw, dict):
+            try:
+                chart = ChartSpec(**chart_raw)
+            except Exception:
+                chart = None
+
         proposal = AnalysisProposal(
             id=str(uuid4()),
             question=request.question,
             code=ai_res.get("code", ""),
             explanation=ai_res.get("explanation", ""),
             kind=request.kind,
-            chart=ai_res.get("chart"),
+            chart=chart,
             status=ProposalStatus.DRAFT
         )
 

@@ -1,0 +1,8 @@
+{
+  "name": "vietnam-climate-pulse-backend",
+  "private": true,
+  "description": "Chạy backend: npm run dev (backend tự nạp application/.env)",
+  "scripts": {
+    "dev": "./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+  }
+}

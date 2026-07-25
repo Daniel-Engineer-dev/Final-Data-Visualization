@@ -401,29 +401,43 @@ function App() {
       });
   };
 
-  const handleApproveAndExecute = () => {
+  // Bước 1: PHÊ DUYỆT — gửi code (có thể đã sửa) để kiểm tra an toàn, KHÔNG chạy.
+  const handleApprove = () => {
     if (!currentProposal) return;
     setAiExecLoading(true);
     setAiError(null);
 
-    // 1. Approve Code
     fetch(`${API_BASE_URL}/api/ai/proposals/${currentProposal.id}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: proposalSql }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Không thể phê duyệt mã SQL"); });
+        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Không thể phê duyệt mã"); });
         return res.json();
       })
-      .then((approvedProposal) => {
-        // 2. Execute approved query
-        return fetch(`${API_BASE_URL}/api/ai/proposals/${approvedProposal.id}/execute`, {
-          method: "POST",
-        });
+      .then(() => {
+        setCurrentProposal((prev) => (prev ? { ...prev, status: "approved" } : null));
+        setAiExecLoading(false);
+        fetchLogs();
       })
+      .catch((err) => {
+        setAiError(err.message);
+        setAiExecLoading(false);
+      });
+  };
+
+  // Bước 2: CHẠY — chỉ gọi được sau khi đã phê duyệt (backend cũng chặn nếu chưa approved).
+  const handleExecute = () => {
+    if (!currentProposal || currentProposal.status !== "approved") return;
+    setAiExecLoading(true);
+    setAiError(null);
+
+    fetch(`${API_BASE_URL}/api/ai/proposals/${currentProposal.id}/execute`, {
+      method: "POST",
+    })
       .then((res) => {
-        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Thực thi SQL thất bại"); });
+        if (!res.ok) return res.json().then((e) => { throw new Error(e.detail || "Thực thi thất bại"); });
         return res.json();
       })
       .then((data) => {
@@ -458,6 +472,8 @@ function App() {
 
   // Xem lại một phiên nhật ký: nạp câu hỏi/code/giải thích vào khung đề xuất để chạy lại
   const handleViewLog = (logRow: AILog) => {
+    // Giữ đúng trạng thái đã lưu trong log (draft/approved/executed...),
+    // để panel đề xuất hiển thị khớp với dòng log được chọn.
     const restored: Proposal = {
       id: logRow.session_id,
       question: logRow.question,
@@ -465,7 +481,7 @@ function App() {
       explanation: logRow.explanation,
       kind: (logRow.kind as AnalysisKind) || "sql",
       chart: null,
-      status: "draft",
+      status: logRow.status,
     };
     setAiKind(restored.kind);
     setCurrentProposal(restored);
@@ -1803,7 +1819,13 @@ function App() {
                         <textarea
                           className="sql__editor"
                           value={proposalSql}
-                          onChange={(e) => setProposalSql(e.target.value)}
+                          onChange={(e) => {
+                            setProposalSql(e.target.value);
+                            // Sửa code sau khi đã duyệt -> quay lại trạng thái chờ duyệt
+                            setCurrentProposal((prev) =>
+                              prev && prev.status === "approved" ? { ...prev, status: "draft" } : prev,
+                            );
+                          }}
                           disabled={currentProposal.status === "executed"}
                           spellCheck={false}
                         />
@@ -1819,9 +1841,26 @@ function App() {
                           <button className="btn btn--danger" onClick={handleRejectProposal}>
                             <Icon name="close" size={17} /> Hủy đề xuất
                           </button>
-                          <button className="btn btn--success" onClick={handleApproveAndExecute} disabled={aiExecLoading}>
+                          <button
+                            className="btn"
+                            onClick={handleApprove}
+                            disabled={aiExecLoading || currentProposal.status === "approved"}
+                          >
+                            <Icon name="check" size={17} />
+                            {currentProposal.status === "approved" ? "Đã phê duyệt" : "Phê duyệt"}
+                          </button>
+                          <button
+                            className="btn btn--success"
+                            onClick={handleExecute}
+                            disabled={aiExecLoading || currentProposal.status !== "approved"}
+                            title={
+                              currentProposal.status !== "approved"
+                                ? "Cần phê duyệt trước khi chạy"
+                                : "Chạy trên dữ liệu cục bộ"
+                            }
+                          >
                             <Icon name="play" size={17} />
-                            {aiExecLoading ? "Đang thực thi…" : "Phê duyệt & chạy local"}
+                            {aiExecLoading ? "Đang xử lý…" : "Chạy local"}
                           </button>
                         </div>
                       )}

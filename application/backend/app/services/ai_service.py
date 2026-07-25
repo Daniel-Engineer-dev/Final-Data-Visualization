@@ -5,12 +5,15 @@ import json
 import logging
 from typing import Dict, Any
 
+from app.core.config import settings
+
 _log = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        self.gemini_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("AI_MODEL") or "gemini-flash-latest"
+        # Ưu tiên nạp từ cấu hình (tự đọc application/.env), fallback biến môi trường.
+        self.gemini_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
+        self.model = settings.ai_model or os.getenv("AI_MODEL") or "gemini-flash-latest"
 
     def translate_to_sql(self, question: str) -> Dict[str, str]:
         """
@@ -44,7 +47,17 @@ class AIService:
             "contents": [
                 {
                     "parts": [
-                        {"text": f"{system_prompt}\n\nCâu hỏi từ người dùng: {question}\nHãy trả về kết quả dưới dạng JSON có hai trường 'code' và 'explanation'."}
+                        {"text": (
+                            f"{system_prompt}\n\nCâu hỏi từ người dùng: {question}\n\n"
+                            "Hãy trả về JSON gồm ba trường:\n"
+                            "- 'code': mã truy vấn.\n"
+                            "- 'explanation': giải thích ngắn gọn bằng tiếng Việt.\n"
+                            "- 'chart': gợi ý biểu đồ phù hợp nhất để trực quan hóa kết quả, dạng "
+                            "{\"type\": <\"bar\"|\"line\"|\"pie\"|\"scatter\">, \"x\": <tên cột trục hoành>, \"y\": <tên cột trục tung>}. "
+                            "Chọn 'bar' để so sánh, 'line' cho xu hướng theo thời gian, 'scatter' cho quan hệ hai biến, 'pie' cho tỉ trọng. "
+                            "x và y PHẢI trùng đúng tên cột (alias) mà 'code' trả về. "
+                            "Nếu 'code' rỗng thì đặt 'chart' là null."
+                        )}
                     ]
                 }
             ],
