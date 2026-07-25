@@ -20,13 +20,13 @@ Dưới đây là bảng từ điển mô tả chi tiết cấu trúc và miền
 \texttt{region} & Varchar & - & Dẫn xuất & $\text{North, Central, South}$ (Miền hành chính). \\ \hline
 \texttt{latitude} & Double & độ & Cấu hình & $[9.18, 22.82]$. Vĩ độ địa lý trạm quan trắc. \\ \hline
 \texttt{longitude} & Double & độ & Cấu hình & $[103.01, 109.22]$. Kinh độ địa lý trạm quan trắc. \\ \hline
-\texttt{temperature\_}\newline\texttt{2m\_max} & Double & $^\circ$C & Open-Meteo & $[14.5, 41.8]$. Nhiệt độ không khí cao nhất ngày. \\ \hline
-\texttt{temperature\_}\newline\texttt{2m\_min} & Double & $^\circ$C & Open-Meteo & $[4.5, 33.6]$. Nhiệt độ không khí thấp nhất ngày. \\ \hline
-\texttt{temperature\_}\newline\texttt{2m\_mean} & Double & $^\circ$C & Open-Meteo & $[8.6, 35.3]$. Nhiệt độ không khí trung bình ngày. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_max} & Double & $^\circ$C & Open-Meteo & $[4.8, 41.8]$. Nhiệt độ không khí cao nhất ngày. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_min} & Double & $^\circ$C & Open-Meteo & $[2.6, 31.1]$. Nhiệt độ không khí thấp nhất ngày. \\ \hline
+\texttt{temperature\_}\newline\texttt{2m\_mean} & Double & $^\circ$C & Open-Meteo & $[4.5, 35.3]$. Nhiệt độ không khí trung bình ngày. \\ \hline
 \texttt{precipitation\_}\newline\texttt{sum} & Double & mm & Open-Meteo & $[0.0, 267.5]$. Tổng lượng mưa ngày (bao gồm cả mưa rào và tuyết). \\ \hline
 \texttt{rain\_sum} & Double & mm & Open-Meteo & $[0.0, 267.5]$. Tổng lượng mưa rào ngày. \\ \hline
-\texttt{wind\_speed\_}\newline\texttt{10m\_max} & Double & km/h & Open-Meteo & $[2.9, 72.4]$. Tốc độ gió thổi mạnh nhất trong ngày. \\ \hline
-\texttt{shortwave\_}\newline\texttt{radiation\_sum} & Double & MJ/m² & Open-Meteo & $[0.0, 28.5]$. Tổng bức xạ sóng ngắn mặt trời chiếu xuống mặt đất. \\ \hline
+\texttt{wind\_speed\_}\newline\texttt{10m\_max} & Double & km/h & Open-Meteo & $[2.8, 91.0]$. Tốc độ gió thổi mạnh nhất trong ngày. \\ \hline
+\texttt{shortwave\_}\newline\texttt{radiation\_sum} & Double & MJ/m² & Open-Meteo & $[1.1, 28.5]$. Tổng bức xạ sóng ngắn mặt trời chiếu xuống mặt đất. \\ \hline
 \end{longtable}
 
 \section{Thu thập và tái tạo dữ liệu}
@@ -36,7 +36,7 @@ Nhóm đã xây dựng quy trình thu thập dữ liệu tự động từ API k
 Dữ liệu thô sau khi thu thập được đưa qua bộ tiền xử lý và làm sạch để chuẩn hóa cấu trúc. Các thông số thời tiết thô được chuyển đổi thành cấu trúc bảng phẳng, đồng thời thực hiện liên kết dữ liệu khí tượng với phân vùng miền địa lý (Bắc, Trung, Nam) của Việt Nam. Hệ thống cũng thực hiện chuẩn hóa định dạng thời gian và chuyển đổi các trường dữ liệu số về đúng định dạng số học cần thiết. Bộ dữ liệu sạch cuối cùng được lưu trữ dưới định dạng nén cột hiệu năng cao (Parquet) nhằm tối ưu hóa dung lượng lưu trữ cục bộ và nâng cao tốc độ truy vấn phục vụ cho ứng dụng giao diện.
 
 \section{Đánh giá chất lượng dữ liệu}
-Kết quả kiểm tra chất lượng dữ liệu bằng công cụ xác thực cho thấy bộ dữ liệu đạt độ tin cậy rất cao. Tỷ lệ khuyết thiếu dữ liệu ghi nhận ở mức tuyệt đối 0.00\% trên tất cả các cột cốt lõi nhờ việc cấu hình khoảng thời gian tải dữ liệu có đầy đủ dữ liệu tái phân tích. Tỷ lệ trùng lặp cũng đạt mức 0.00\%, đảm bảo mỗi cặp khóa địa điểm và ngày quan trắc xuất hiện duy nhất một lần. Kiểm tra miền giá trị hợp lệ xác nhận nhiệt độ dao động ổn định từ $4.5^\circ$C đến $41.8^\circ$C, lượng mưa nằm trong khoảng từ 0 đến 267.5 mm, và tốc độ gió cực đại từ 2.9 đến 72.4 km/h, hoàn toàn tương thích với thực tế khí hậu Việt Nam.
+Kết quả kiểm tra chất lượng dữ liệu bằng công cụ xác thực cho thấy bộ dữ liệu đạt độ tin cậy rất cao. Tỷ lệ khuyết thiếu dữ liệu ghi nhận ở mức tuyệt đối 0.00\% trên tất cả các cột cốt lõi nhờ việc cấu hình khoảng thời gian tải dữ liệu có đầy đủ dữ liệu tái phân tích. Tỷ lệ trùng lặp cũng đạt mức 0.00\%, đảm bảo mỗi cặp khóa địa điểm và ngày quan trắc xuất hiện duy nhất một lần. Kiểm tra miền giá trị hợp lệ xác nhận nhiệt độ dao động ổn định từ $2.6^\circ$C đến $41.8^\circ$C, lượng mưa nằm trong khoảng từ 0 đến 267.5 mm, và tốc độ gió cực đại từ 2.8 đến 91.0 km/h -- mức đỉnh ghi nhận tại Quảng Ninh ngày 07/09/2024, trùng thời điểm bão Yagi đổ bộ -- hoàn toàn tương thích với thực tế khí hậu Việt Nam.
 
 \section{Đạo đức, quyền riêng tư và hạn chế}
 Về mặt đạo đức và quyền riêng tư, dữ liệu được khai thác hoàn toàn là các thông số môi trường vĩ mô và vị trí địa lý công cộng, không chứa bất kỳ thông tin nhạy cảm của cá nhân hay doanh nghiệp nào. Tuy nhiên, bộ dữ liệu tồn tại hạn chế nhất định khi dữ liệu từ Open-Meteo là dữ liệu tái phân tích dạng lưới, kết hợp mô hình hóa số trị và quan sát vệ tinh. Do đó, các thông số cực đoan ở quy mô vi khí hậu cục bộ tại các địa hình đặc thù như đỉnh núi cao hay thung lũng sâu có thể bị san phẳng hoặc hơi khác biệt so với số liệu đo đạc trực tiếp tại các trạm khí tượng thủy văn mặt đất của Việt Nam. Giới hạn diễn giải này cần được lưu ý khi sử dụng dữ liệu cho các phân tích chi tiết.
