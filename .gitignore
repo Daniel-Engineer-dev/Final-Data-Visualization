@@ -53,3 +53,16 @@ report/.vscode/*
 !report/.vscode/settings.json
 .idea/
 kich-ban-quay-video-duc-qvinh.md
+
+# Working docs and slides submitted separately (Moodle/cloud), not part of the GitHub source repo
+/chuc-nang-ai.md
+/implement_plan.md
+/kich-ban-thuyet-trinh.md
+/project_approval_criteria.md
+/script-thuyet-trinh-full.md
+/summary.md
+/group1-slide.pptx
+/\[01\]-slide.pdf
+application/README.md
+report/README.md
+tests/README.md
